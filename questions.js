@@ -53,7 +53,7 @@ const QUESTIONS = [
   },
   {
     text: "Quel surnom Léa a-t-elle donné à sa belle-mère ?",
-    options: ["Mamie lapin", "Mamie gâteaux", "Mamie tartare", "Mamie Couscous"],
+    options: ["Mamie lapin", "Mamie gâteaux", "Mamie toutoule", "Mamie Couscous"],
     correct: 3, // Mamie Couscous
     time: 20,
   },
@@ -64,7 +64,7 @@ const QUESTIONS = [
     time: 20,
   },
   {
-    text: "Que s'est-il passé lors de la naissance de leur bébé ?",
+    text: "Que s'est-il passé lors de la naissance de Julien ?",
     options: [
       "Stéphane s'est évanoui",
       "Stéphane s'est endormi",
