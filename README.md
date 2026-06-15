@@ -11,6 +11,14 @@ vidéoprojecteur, les invités jouent depuis leur téléphone en scannant un QR 
 - ⚡ Temps réel via **Socket.IO**, pensé pour **50+ joueurs simultanés**.
 - 🇫🇷 Interface entièrement en français.
 
+## 🟣 Déploiement en 1 clic (Render)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/julienduq59/Quiz-St-phane-Marie)
+
+Le dépôt contient un blueprint `render.yaml` : clique le bouton, connecte ton
+compte Render, valide → tu obtiens une URL publique stable
+`https://soiree-quiz-stephane-marie.onrender.com` (présentateur sur `/host`).
+
 ---
 
 ## 🚀 Lancer en local
