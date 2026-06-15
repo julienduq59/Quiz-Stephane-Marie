@@ -39,15 +39,18 @@ app.get("/", (req, res) => {
 // Endpoint utilisé par l'écran présentateur pour récupérer l'URL publique + QR code.
 app.get("/api/connect-info", async (req, res) => {
   const url = resolvePublicUrl(req);
+  // Le QR encode l'URL de connexion AVEC le code PIN → le joueur arrive
+  // directement sur l'écran « Rejoindre » avec le code déjà rempli.
+  const joinUrl = `${url}/?pin=${room.pin}`;
   try {
-    const qr = await QRCode.toDataURL(url, {
+    const qr = await QRCode.toDataURL(joinUrl, {
       width: 480,
       margin: 1,
       color: { dark: "#1a0b2e", light: "#ffffff" },
     });
-    res.json({ url, qr, pin: room.pin });
+    res.json({ url, joinUrl, qr, pin: room.pin });
   } catch (err) {
-    res.status(500).json({ error: "QR generation failed", url, pin: room.pin });
+    res.status(500).json({ error: "QR generation failed", url, joinUrl, pin: room.pin });
   }
 });
 
@@ -72,12 +75,17 @@ function resolvePublicUrl(req) {
   if (process.env.PUBLIC_URL) {
     return process.env.PUBLIC_URL.replace(/\/$/, "");
   }
-  // 2) Derrière un proxy / tunnel (cloudflared, ngrok, Render, Railway…)
-  const xfHost = req && req.headers["x-forwarded-host"];
-  const xfProto = req && req.headers["x-forwarded-proto"];
-  if (xfHost) {
-    const proto = (xfProto || "https").split(",")[0].trim();
-    return `${proto}://${String(xfHost).split(",")[0].trim()}`;
+  if (req && req.headers) {
+    // 2) Derrière un proxy / tunnel / hébergeur (Render, Railway, cloudflared, ngrok…)
+    //    On lit en priorité X-Forwarded-Host, sinon l'en-tête Host classique
+    //    (Render n'envoie pas toujours X-Forwarded-Host mais transmet le bon Host).
+    const xfHost = req.headers["x-forwarded-host"];
+    const host = String(xfHost || req.headers["host"] || "").split(",")[0].trim();
+    if (host && !/^(localhost|127\.|0\.0\.0\.0)/.test(host)) {
+      const xfProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+      const proto = xfProto || (req.socket && req.socket.encrypted ? "https" : "http");
+      return `${proto}://${host}`;
+    }
   }
   // 3) En local : IP de la machine sur le réseau wifi
   return `http://${localIPv4()}:${PORT}`;
