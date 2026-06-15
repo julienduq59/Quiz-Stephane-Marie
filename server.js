@@ -280,6 +280,22 @@ function resetGame() {
   broadcastPlayers();
 }
 
+// Exclut tous les joueurs et génère un nouveau code de salle (nouveau QR).
+function newRoom() {
+  clearInterval(room.timer);
+  room.pin = makePin();
+  room.state = STATES.LOBBY;
+  room.currentIndex = -1;
+  room.answers = new Map();
+  room.timeLeft = 0;
+  // Prévient puis exclut tous les joueurs (ils devront ressaisir le nouveau code)
+  io.to("players").emit("kicked", { reason: "La salle a été réinitialisée par l'animateur." });
+  io.in("players").socketsLeave("players");
+  room.players.clear();
+  io.to("host").emit("newRoom", { pin: room.pin });
+  broadcastPlayers();
+}
+
 /* ------------------------------------------------------------------ */
 /* Socket.IO                                                           */
 /* ------------------------------------------------------------------ */
@@ -322,6 +338,10 @@ io.on("connection", (socket) => {
 
   socket.on("host:restart", () => {
     resetGame();
+  });
+
+  socket.on("host:newRoom", () => {
+    newRoom();
   });
 
   /* ----- Joueur ----- */

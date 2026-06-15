@@ -31,14 +31,17 @@
   }
 
   /* ---------- Connect info / QR ---------- */
-  fetch("/api/connect-info")
-    .then((r) => r.json())
-    .then((info) => {
-      if (info.qr) $("qr").src = info.qr;
-      $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
-      $("pin").textContent = info.pin;
-    })
-    .catch(() => {});
+  function refreshConnectInfo() {
+    return fetch("/api/connect-info")
+      .then((r) => r.json())
+      .then((info) => {
+        if (info.qr) $("qr").src = info.qr;
+        $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
+        $("pin").textContent = info.pin;
+      })
+      .catch(() => {});
+  }
+  refreshConnectInfo();
 
   /* ---------- Player list ---------- */
   function renderPlayers(players, count) {
@@ -185,4 +188,17 @@
   $("btn-reveal").addEventListener("click", () => { $("btn-reveal").disabled = true; socket.emit("host:reveal"); });
   $("btn-next").addEventListener("click", () => socket.emit("host:next"));
   $("btn-restart").addEventListener("click", () => socket.emit("host:restart"));
+  $("btn-new-room").addEventListener("click", () => {
+    if (confirm("Exclure tous les joueurs et générer un nouveau code de salle ?")) {
+      socket.emit("host:newRoom");
+    }
+  });
+
+  // Salle réinitialisée : nouveau PIN + nouveau QR, retour au lobby vide
+  socket.on("newRoom", (d) => {
+    $("pin").textContent = d.pin;
+    refreshConnectInfo();
+    show("lobby");
+    confetti.stop();
+  });
 })();
