@@ -184,4 +184,18 @@
     else show("join");
     confetti.stop();
   });
+
+  /* ---------- Exclusion (nouvelle salle) ---------- */
+  socket.on("kicked", (d) => {
+    joined = false;
+    answered = false;
+    myScore = 0;
+    localStorage.removeItem("quiz_player_id"); // nouvelle identité au prochain join
+    $("input-pin").value = ""; // l'ancien code n'est plus valide
+    $("btn-join").disabled = false;
+    $("join-error").textContent =
+      (d && d.reason ? d.reason + " " : "") + "Saisis le nouveau code pour rejouer.";
+    confetti.stop();
+    show("join");
+  });
 })();
