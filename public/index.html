@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Soirée Quiz — Stéphane & Marie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="hero">
+      <div class="kicker">Soirée Quiz</div>
+      <div class="names display">Stéphane <span class="heart">♥</span> Marie</div>
+    </header>
+
+    <!-- JOIN -->
+    <section id="screen-join" class="grow center">
+      <div class="card col" style="gap:16px; width:min(440px,100%);">
+        <h2 class="display center">Rejoindre la fête</h2>
+        <input id="input-name" placeholder="Ton prénom" maxlength="20"
+          style="padding:18px; border-radius:14px; border:none; font-size:1.2rem; text-align:center; font-family:'Inter';" />
+        <input id="input-pin" placeholder="Code salle (6 lettres)" maxlength="6"
+          style="padding:14px; border-radius:14px; border:none; font-size:1.05rem; text-align:center; text-transform:uppercase; letter-spacing:0.2em; font-family:'Unbounded';" />
+        <button id="btn-join" class="btn big">Entrer 🎉</button>
+        <div id="join-error" class="center rose-text" style="min-height:20px; font-weight:600;"></div>
+      </div>
+    </section>
+
+    <!-- WAIT -->
+    <section id="screen-wait" class="grow center hidden">
+      <div class="card col center" style="gap:14px; text-align:center;">
+        <div class="display" style="font-size:1.6rem;">Bienvenue <span id="wait-name" class="gold"></span> !</div>
+        <div class="muted">Tu es dans la place. En attente du présentateur…</div>
+        <div class="pill display">Score : <span id="wait-score">0</span></div>
+      </div>
+    </section>
+
+    <!-- ANSWER -->
+    <section id="screen-answer" class="grow hidden col" style="gap:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="pill display">Q<span id="p-index">1</span></span>
+        <span class="pill display" id="p-timer">20</span>
+      </div>
+      <div class="card center" style="text-align:center;">
+        <h2 class="display" id="p-text" style="font-size:clamp(1.1rem,5vw,1.7rem);">…</h2>
+      </div>
+      <div class="tiles grow" id="p-tiles"></div>
+      <div id="answer-sent" class="card center hidden col" style="gap:8px; text-align:center;">
+        <div class="display gold" style="font-size:1.4rem;">Réponse envoyée ✓</div>
+        <div class="muted">En attente des autres joueurs…</div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section id="screen-result" class="grow center hidden">
+      <div id="result-card" class="card col center" style="gap:14px; text-align:center; width:min(440px,100%);">
+        <div class="display" id="result-title" style="font-size:2rem;">…</div>
+        <div class="display" id="result-points" style="font-size:1.5rem;"></div>
+        <div class="pill display">Score : <span id="result-score">0</span></div>
+        <div class="muted display">Position : <span id="result-rank" class="gold"></span></div>
+      </div>
+    </section>
+
+    <!-- FINISHED -->
+    <section id="screen-finished" class="grow center hidden">
+      <div class="card col center" style="gap:14px; text-align:center; width:min(440px,100%);">
+        <div class="display" style="font-size:2.2rem;">🎉 Terminé ! 🎉</div>
+        <div class="display gold" id="final-rank" style="font-size:1.6rem;"></div>
+        <div class="pill display">Score final : <span id="final-score">0</span></div>
+        <div class="muted">Merci d'avoir joué pour Stéphane &amp; Marie ♥</div>
+      </div>
+    </section>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/player.js"></script>
+</body>
+</html>

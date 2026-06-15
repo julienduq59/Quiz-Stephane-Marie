@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soirée Quiz — Présentateur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="hero">
+      <div class="kicker">Soirée Quiz</div>
+      <div class="names display">Stéphane <span class="heart">♥</span> Marie</div>
+    </header>
+
+    <!-- LOBBY -->
+    <section id="screen-lobby" class="grow">
+      <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px; align-items:stretch;">
+        <div class="card center col" style="gap:18px; text-align:center;">
+          <div class="muted">Scannez pour rejoindre</div>
+          <img id="qr" alt="QR code" style="width:min(46vh,380px); border-radius:16px; background:#fff; padding:10px;" />
+          <div class="pill" style="font-size:1.1rem;">🔗 <span id="conn-url">…</span></div>
+          <div class="display" style="font-size:1.1rem;">Code salle :
+            <span id="pin" class="gold" style="letter-spacing:0.25em; font-size:1.6rem;">······</span>
+          </div>
+        </div>
+        <div class="card col" style="gap:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="display">Joueurs connectés</h2>
+            <span class="pill display"><span id="player-count">0</span></span>
+          </div>
+          <div id="player-list" style="display:flex; flex-wrap:wrap; gap:10px; align-content:flex-start; overflow:auto; max-height:46vh;"></div>
+          <div class="grow"></div>
+          <button id="btn-start" class="btn big" disabled>Démarrer le quiz ▶</button>
+          <div class="muted center" id="lobby-hint" style="font-size:0.9rem;">En attente d'au moins 1 joueur…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUESTION -->
+    <section id="screen-question" class="grow hidden col" style="gap:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="pill display">Question <span id="q-index">1</span>/<span id="q-total">3</span></span>
+        <div class="display" id="timer" style="font-size:3rem; color:var(--gold);">20</div>
+        <span class="pill display">Réponses : <span id="answer-count">0</span></span>
+      </div>
+      <div class="card center" style="text-align:center;">
+        <h1 class="display" id="q-text" style="font-size:clamp(1.5rem,3.6vw,3rem);">…</h1>
+      </div>
+      <div class="tiles grow" id="q-tiles"></div>
+      <div class="center" style="gap:14px;">
+        <button id="btn-reveal" class="btn secondary">Révéler la réponse</button>
+      </div>
+    </section>
+
+    <!-- REVEAL -->
+    <section id="screen-reveal" class="grow hidden col" style="gap:18px;">
+      <div class="card center"><h1 class="display" id="r-text" style="font-size:clamp(1.4rem,3vw,2.4rem); text-align:center;">…</h1></div>
+      <div class="tiles" id="r-tiles"></div>
+      <div class="card col" style="gap:10px;">
+        <h2 class="display">Classement</h2>
+        <div id="r-leaderboard" class="col" style="gap:8px;"></div>
+      </div>
+      <div class="center" style="gap:14px;">
+        <button id="btn-next" class="btn big">Question suivante ▶</button>
+      </div>
+    </section>
+
+    <!-- PODIUM -->
+    <section id="screen-podium" class="grow hidden col" style="gap:20px;">
+      <h1 class="display center" style="font-size:clamp(2rem,5vw,3.5rem); color:var(--gold);">🏆 Podium 🏆</h1>
+      <div id="podium" style="display:flex; align-items:flex-end; justify-content:center; gap:18px; min-height:38vh;"></div>
+      <div class="card col" style="gap:8px; max-height:30vh; overflow:auto;">
+        <h2 class="display">Classement complet</h2>
+        <div id="full-leaderboard" class="col" style="gap:8px;"></div>
+      </div>
+      <div class="center">
+        <button id="btn-restart" class="btn rose big">Recommencer une partie ↻</button>
+      </div>
+    </section>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/host.js"></script>
+</body>
+</html>
