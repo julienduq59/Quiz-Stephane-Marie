@@ -39,6 +39,7 @@
   };
   let answered = false;
   let myScore = 0;
+  let joined = false; // passe à true seulement après validation manuelle du prénom
 
   // Pré-remplir l'URL ?pin=XXXXXX (depuis le QR code)
   const urlPin = new URLSearchParams(location.search).get("pin");
@@ -58,6 +59,7 @@
         $("join-error").textContent = (res && res.error) || "Connexion impossible.";
         return;
       }
+      joined = true;
       store.id = res.playerId;
       store.name = res.name;
       myScore = res.score || 0;
@@ -71,9 +73,11 @@
   $("input-name").addEventListener("keydown", (e) => { if (e.key === "Enter") doJoin(); });
   $("input-pin").addEventListener("keydown", (e) => { if (e.key === "Enter") doJoin(); });
 
-  // Reconnexion automatique si on a déjà un id
+  // Reconnexion automatique UNIQUEMENT en cours de partie (coupure réseau /
+  // mise en veille du téléphone). Au premier chargement, on laisse toujours le
+  // joueur saisir/valider son prénom sur l'écran « Rejoindre » (prénom pré-rempli).
   socket.on("connect", () => {
-    if (store.id && store.name) {
+    if (joined && store.id) {
       socket.emit("player:join", { name: store.name, playerId: store.id }, (res) => {
         if (res && res.ok) {
           myScore = res.score || 0;
