@@ -18,7 +18,7 @@ const QUESTIONS = [
   {
     text: "Où Stéphane et Marie se sont-ils rencontrés pour la première fois ?",
     options: ["Discothèque", "Lycée", "Bowling", "Soirée"],
-    correct: 3, // Soirée
+    correct: 2, // Bowling
     time: 20,
   },
   {
