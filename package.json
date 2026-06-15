@@ -1,0 +1,20 @@
+{
+  "name": "soiree-quiz-stephane-marie",
+  "version": "1.0.0",
+  "description": "Quiz multijoueur en temps réel façon Kahoot — Soirée Quiz Stéphane & Marie",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.5"
+  },
+  "license": "MIT"
+}
