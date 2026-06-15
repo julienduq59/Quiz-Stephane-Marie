@@ -149,7 +149,7 @@ function questionPublic() {
     total: QUESTIONS.length,
     text: q.text,
     options: q.options,
-    time: q.time || 20,
+    time: q.time || 30,
   };
 }
 
@@ -454,7 +454,7 @@ io.on("connection", (socket) => {
     const q = currentQuestion();
     const elapsed = Date.now() - room.questionStartedAt;
     const isCorrect = choice === q.correct;
-    const points = isCorrect ? computePoints(elapsed, q.time || 20) : 0;
+    const points = isCorrect ? computePoints(elapsed, q.time || 30) : 0;
     player.score += points;
     player.lastAnswer = choice;
 
