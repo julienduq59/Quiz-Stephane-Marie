@@ -24,15 +24,13 @@ const QUESTIONS = [
   {
     text: "Quelle connaissance Stéphane et Marie avaient-ils en commun ?",
     options: ["Sébastien", "Isabelle", "Christophe", "Annie"],
-    // TODO : bonne réponse à confirmer par les hôtes (mettre l'index 0-3 ci-dessous)
-    correct: 0,
+    correct: 3, // Annie
     time: 20,
   },
   {
     text: "Quel sport Stéphane et Marie pratiquent-ils ensemble ?",
     options: ["Cross fit", "Footing", "Natation", "Musculation"],
-    // TODO : bonne réponse à confirmer par les hôtes (mettre l'index 0-3 ci-dessous)
-    correct: 0,
+    correct: 0, // Cross fit
     time: 20,
   },
 ];
