@@ -51,6 +51,29 @@ const QUESTIONS = [
     correct: 2, // Villeneuve d'Ascq
     time: 20,
   },
+  {
+    text: "Quel surnom Léa a-t-elle donné à sa belle-mère ?",
+    options: ["Mamie lapin", "Mamie gâteaux", "Mamie tartare", "Mamie Couscous"],
+    correct: 3, // Mamie Couscous
+    time: 20,
+  },
+  {
+    text: "Quelle est leur région de vacances préférée ?",
+    options: ["Côte d'Azur", "Bretagne", "Savoie", "Pays Basque"],
+    correct: 3, // Pays Basque
+    time: 20,
+  },
+  {
+    text: "Que s'est-il passé lors de la naissance de leur bébé ?",
+    options: [
+      "Stéphane s'est évanoui",
+      "Stéphane s'est endormi",
+      "Stéphane est arrivé en retard",
+      "Stéphane a fondu en larmes",
+    ],
+    correct: 0, // Stéphane s'est évanoui
+    time: 20,
+  },
 ];
 
 module.exports = QUESTIONS;
