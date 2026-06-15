@@ -33,6 +33,24 @@ const QUESTIONS = [
     correct: 0, // Cross fit
     time: 20,
   },
+  {
+    text: "Où Stéphane et Marie ont-ils passé leur voyage de noces ?",
+    options: ["République Dominicaine", "Grèce", "Île Maurice", "Seychelles"],
+    correct: 2, // Île Maurice
+    time: 20,
+  },
+  {
+    text: "À quel âge Stéphane et Marie se sont-ils rencontrés ?",
+    options: ["18 ans", "20 ans", "22 ans", "25 ans"],
+    correct: 1, // 20 ans
+    time: 20,
+  },
+  {
+    text: "Dans quelle ville Stéphane et Marie ont-ils emménagé ensemble pour la première fois ?",
+    options: ["Leers", "Lys-lez-Lannoy", "Villeneuve d'Ascq", "Roubaix"],
+    correct: 2, // Villeneuve d'Ascq
+    time: 20,
+  },
 ];
 
 module.exports = QUESTIONS;
