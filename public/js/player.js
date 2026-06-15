@@ -169,7 +169,8 @@
   /* ---------- Finished ---------- */
   socket.on("finished", (d) => {
     show("finished");
-    $("final-rank").textContent = `Tu finis ${d.rank}ᵉ sur ${d.totalPlayers} !`;
+    const ord = d.rank === 1 ? "1er" : `${d.rank}ᵉ`;
+    $("final-rank").textContent = `Tu finis ${ord} sur ${d.totalPlayers} !`;
     $("final-score").textContent = d.score;
     if (d.rank <= 3) confetti.shower(3000);
   });
