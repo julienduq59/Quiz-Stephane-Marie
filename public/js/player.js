@@ -40,6 +40,7 @@
   let answered = false;
   let myScore = 0;
   let joined = false; // passe à true seulement après validation manuelle du prénom
+  let currentOptions = []; // options de la question en cours (pour la révélation)
 
   // Pré-remplir l'URL ?pin=XXXXXX (depuis le QR code)
   const urlPin = new URLSearchParams(location.search).get("pin");
@@ -124,6 +125,7 @@
 
   socket.on("question", (q) => {
     answered = false;
+    currentOptions = q.options;
     show("answer");
     $("p-index").textContent = q.index + 1;
     $("p-timer").textContent = q.time;
@@ -161,10 +163,31 @@
       $("result-title").textContent = "❌ Mauvaise réponse";
       card.style.background = "rgba(232,68,59,0.3)";
     }
+    renderResultTiles(d.correctIndex, d.yourChoice);
     $("result-points").textContent = d.points > 0 ? `+${d.points} points` : "+0 point";
     $("result-score").textContent = d.score;
     $("result-rank").textContent = `${d.rank} / ${d.totalPlayers}`;
   });
+
+  // Affiche les 4 réponses sur le téléphone : bonne réponse surlignée,
+  // choix du joueur entouré, les autres estompées.
+  function renderResultTiles(correctIndex, yourChoice) {
+    const el = $("result-tiles");
+    if (!el) return;
+    el.innerHTML = "";
+    currentOptions.forEach((label, i) => {
+      const t = TILES[i];
+      const div = document.createElement("div");
+      div.className = `tile ${t.cls}`;
+      if (i === correctIndex) div.classList.add("correct");
+      else div.classList.add("dim");
+      if (i === yourChoice) div.classList.add("chosen");
+      div.style.minHeight = "52px";
+      div.style.fontSize = "1rem";
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>`;
+      el.appendChild(div);
+    });
+  }
 
   /* ---------- Finished ---------- */
   socket.on("finished", (d) => {
