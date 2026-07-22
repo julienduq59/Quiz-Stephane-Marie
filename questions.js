@@ -120,6 +120,12 @@ const QUESTIONS = [
     correct: 2, // Badminton
     time: 30,
   },
+  {
+    text: "Quel surnom Stéphane donnait-il à Émilie quand elle était petite ?",
+    options: ["Renotte", "Crevette", "Casse-noisette", "Tati Danielle"],
+    correct: 1, // Crevette
+    time: 30,
+  },
   // Questions « Stéphane / Marie » : on garde toujours le même ordre de tuiles
   // (Stéphane à gauche, Marie à droite) pour que les joueurs se repèrent.
   {
