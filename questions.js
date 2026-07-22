@@ -74,6 +74,12 @@ const QUESTIONS = [
     correct: 0, // Stéphane s'est évanoui
     time: 30,
   },
+  {
+    text: "Quel est le gâteau préféré d'Émilie ?",
+    options: ["L'opéra", "Le merveilleux", "La tarte meringuée au citron", "La tarte aux fraises"],
+    correct: 1, // Le merveilleux
+    time: 30,
+  },
 ];
 
 module.exports = QUESTIONS;
