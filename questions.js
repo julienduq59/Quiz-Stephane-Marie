@@ -108,6 +108,30 @@ const QUESTIONS = [
     correct: 2, // Elle a dessiné sur la portière de la voiture avec un caillou
     time: 30,
   },
+  {
+    text: "Quel sport Émilie a-t-elle pratiqué ?",
+    options: ["Judo", "Athlétisme", "Boxe", "Handball"],
+    correct: 2, // Boxe
+    time: 30,
+  },
+  {
+    text: "Qui tient les comptes à la maison ?",
+    options: ["Marie", "Stéphane"],
+    correct: 1, // Stéphane
+    time: 30,
+  },
+  {
+    text: "Qui fait la vaisselle ?",
+    options: ["Marie", "Stéphane"],
+    correct: 1, // Stéphane
+    time: 30,
+  },
+  {
+    text: "Qui cuisine ?",
+    options: ["Marie", "Stéphane"],
+    correct: 0, // Marie
+    time: 30,
+  },
 ];
 
 module.exports = QUESTIONS;
