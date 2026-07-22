@@ -122,7 +122,7 @@ const QUESTIONS = [
   },
   {
     text: "Quel surnom Stéphane donnait-il à Émilie quand elle était petite ?",
-    options: ["Renotte", "Crevette", "Casse-noisette", "Tati Danielle"],
+    options: ["Nénette", "Crevette", "Casse-noisette", "Tati Danielle"],
     correct: 1, // Crevette
     time: 30,
   },
