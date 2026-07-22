@@ -29,8 +29,8 @@ const QUESTIONS = [
   },
   {
     text: "Quel sport Stéphane et Marie pratiquent-ils ensemble ?",
-    options: ["Cross fit", "Footing", "Natation", "Musculation"],
-    correct: 0, // Cross fit
+    options: ["CrossFit", "Footing", "Natation", "Musculation"],
+    correct: 0, // CrossFit
     time: 30,
   },
   {
