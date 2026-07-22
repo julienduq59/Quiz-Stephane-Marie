@@ -114,22 +114,24 @@ const QUESTIONS = [
     correct: 2, // Boxe
     time: 30,
   },
+  // Questions « Stéphane / Marie » : on garde toujours le même ordre de tuiles
+  // (Stéphane à gauche, Marie à droite) pour que les joueurs se repèrent.
   {
     text: "Qui tient les comptes à la maison ?",
-    options: ["Marie", "Stéphane"],
-    correct: 1, // Stéphane
+    options: ["Stéphane", "Marie"],
+    correct: 0, // Stéphane
     time: 30,
   },
   {
     text: "Qui fait la vaisselle ?",
-    options: ["Marie", "Stéphane"],
-    correct: 1, // Stéphane
+    options: ["Stéphane", "Marie"],
+    correct: 0, // Stéphane
     time: 30,
   },
   {
     text: "Qui cuisine ?",
-    options: ["Marie", "Stéphane"],
-    correct: 0, // Marie
+    options: ["Stéphane", "Marie"],
+    correct: 1, // Marie
     time: 30,
   },
 ];
