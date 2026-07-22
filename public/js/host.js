@@ -90,7 +90,11 @@
     return fetch("/api/connect-info?quiz=" + encodeURIComponent(quizId))
       .then((r) => r.json())
       .then((info) => {
-        if (info.qr) $("qr").src = info.qr;
+        if (info.qr) {
+          $("qr").src = info.qr;
+          const badgeQr = $("pin-badge-qr");
+          if (badgeQr) badgeQr.src = info.qr;
+        }
         if (info.url) $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
         if (info.pin) setPin(info.pin);
         if (info.names && info.names.length) {
