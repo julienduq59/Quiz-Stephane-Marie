@@ -455,15 +455,34 @@ io.on("connection", (socket) => {
     }
 
     let player;
+    let reconnected = false;
     if (reconnectId && room.players.has(reconnectId)) {
+      // 1) Reprise par identifiant mémorisé (même navigateur)
       player = room.players.get(reconnectId);
       player.connected = true;
       player.socketId = socket.id;
       if (name) player.name = name;
+      reconnected = true;
     } else {
-      const id = reconnectId || `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      player = { id, name, score: 0, connected: true, socketId: socket.id, lastAnswer: null };
-      room.players.set(id, player);
+      // 2) Reprise par prénom : un joueur DÉCONNECTÉ du même prénom récupère son
+      //    score (cas d'un téléphone qui a perdu sa mémoire ou d'un autre appareil).
+      let previous = null;
+      const lower = name.toLowerCase();
+      for (const p of room.players.values()) {
+        if (!p.connected && p.name.trim().toLowerCase() === lower) { previous = p; break; }
+      }
+      if (previous) {
+        player = previous;
+        player.connected = true;
+        player.socketId = socket.id;
+        player.name = name;
+        reconnected = true;
+      } else {
+        // 3) Nouveau joueur
+        const id = reconnectId || `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        player = { id, name, score: 0, connected: true, socketId: socket.id, lastAnswer: null };
+        room.players.set(id, player);
+      }
     }
 
     socket.data.quizId = quizId;
@@ -480,6 +499,7 @@ io.on("connection", (socket) => {
         score: player.score,
         state: room.state,
         names: def.names,
+        reconnected: reconnected && player.score > 0,
       });
     }
 

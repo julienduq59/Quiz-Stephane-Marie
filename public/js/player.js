@@ -51,6 +51,24 @@
     for (const k in screens) screens[k].classList.toggle("hidden", k !== name);
   }
 
+  // Petit message flottant (ex. reprise de score)
+  function toast(msg) {
+    let t = document.getElementById("toast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "toast";
+      t.style.cssText =
+        "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);" +
+        "background:rgba(38,137,12,0.96);color:#fff;padding:12px 18px;border-radius:12px;" +
+        "font-weight:700;z-index:100;box-shadow:0 8px 22px rgba(0,0,0,.4);max-width:90%;text-align:center;";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(t._to);
+    t._to = setTimeout(() => { t.style.display = "none"; }, 4500);
+  }
+
   /* ---------- State / persistence ---------- */
   const store = {
     get id() { return localStorage.getItem("quiz_player_id"); },
@@ -88,6 +106,9 @@
       setNames(res.names);
       $("wait-name").textContent = res.name;
       $("wait-score").textContent = myScore;
+      if (res.reconnected) {
+        toast(`Rebienvenue ${res.name} ! Ton score (${res.score}) est conservé 🎉`);
+      }
       if (res.state === "lobby") show("wait");
       // sinon le serveur enverra l'écran adéquat (question/result/finished)
     });
