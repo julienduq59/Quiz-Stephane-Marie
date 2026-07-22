@@ -2,6 +2,9 @@
 (function () {
   const socket = io();
 
+  // Quiz courant, déduit de l'URL : /quiz/<quizId>/host
+  const quizId = location.pathname.split("/")[2] || "parents";
+
   const TILES = [
     { cls: "red", shape: "triangle" },
     { cls: "blue", shape: "diamond" },
@@ -32,12 +35,17 @@
 
   /* ---------- Connect info / QR ---------- */
   function refreshConnectInfo() {
-    return fetch("/api/connect-info")
+    return fetch("/api/connect-info?quiz=" + encodeURIComponent(quizId))
       .then((r) => r.json())
       .then((info) => {
         if (info.qr) $("qr").src = info.qr;
-        $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
-        $("pin").textContent = info.pin;
+        if (info.url) $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
+        if (info.pin) $("pin").textContent = info.pin;
+        if (info.nameLeft && info.nameRight) {
+          $("hero-names").innerHTML =
+            `${info.nameLeft} <span class="heart">♥</span> ${info.nameRight}`;
+          document.title = `${info.nameLeft} & ${info.nameRight} — Présentateur`;
+        }
       })
       .catch(() => {});
   }
@@ -142,7 +150,7 @@
   }
 
   /* ---------- Socket events ---------- */
-  socket.on("connect", () => socket.emit("host:join"));
+  socket.on("connect", () => socket.emit("host:join", { quizId }));
 
   socket.on("host:state", (s) => {
     $("pin").textContent = s.pin;

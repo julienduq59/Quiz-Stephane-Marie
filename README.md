@@ -1,14 +1,24 @@
-# 🎉 Soirée Quiz — Stéphane ♥ Marie
+# 🎉 Soirée Quiz — plateforme multi-quiz
 
-Un quiz **multijoueur en temps réel**, façon Kahoot, conçu pour animer la soirée
-de Stéphane et Marie. Le présentateur affiche les questions sur la TV / le
-vidéoprojecteur, les invités jouent depuis leur téléphone en scannant un QR code.
+Une **plateforme de quiz multijoueur en temps réel**, façon Kahoot. Le présentateur
+affiche les questions sur la TV / le vidéoprojecteur, les invités jouent depuis leur
+téléphone en scannant un QR code.
 
-- 🖥️ **Présentateur** (`/host`) : QR code, code PIN, liste des joueurs, questions,
-  compte à rebours, classement et podium final avec confettis.
-- 📱 **Joueurs** (`/`) : on saisit son prénom, on touche une des 4 tuiles colorées,
-  on voit son score et son classement.
-- ⚡ Temps réel via **Socket.IO**, pensé pour **50+ joueurs simultanés**.
+La plateforme héberge **plusieurs quiz indépendants** (chacun avec sa propre salle,
+son code PIN et son QR) :
+- **Stéphane ♥ Marie** — la soirée quiz des parents
+- **Clément ♥ Charlotte** — le quiz du mariage *(questions d'exemple à remplacer)*
+
+### Pages
+- 🏠 **Accueil** (`/`) : présentation + choix du quiz.
+- 🖥️ **Présentateur** (`/quiz/<id>/host`) : QR code, code PIN, liste des joueurs,
+  questions, compte à rebours, classement et podium final avec confettis.
+- 📱 **Joueurs** (`/quiz/<id>`) : on saisit son prénom, on touche une des 4 tuiles
+  colorées, on voit la bonne réponse, son score et son classement.
+
+*(les identifiants `<id>` sont `parents` et `clement`)*
+
+- ⚡ Temps réel via **Socket.IO**, pensé pour **50+ joueurs simultanés** par quiz.
 - 🇫🇷 Interface entièrement en français.
 
 ## 🟣 Déploiement en 1 clic (Render)
@@ -17,7 +27,7 @@ vidéoprojecteur, les invités jouent depuis leur téléphone en scannant un QR 
 
 Le dépôt contient un blueprint `render.yaml` : clique le bouton, connecte ton
 compte Render, valide → tu obtiens une URL publique stable
-`https://soiree-quiz-stephane-marie.onrender.com` (présentateur sur `/host`).
+`https://soiree-quiz-stephane-marie.onrender.com` (accueil sur `/`, puis choix du quiz).
 
 ---
 
@@ -34,12 +44,14 @@ Le serveur démarre sur le port `3000` (configurable via `PORT`). La console
 affiche les adresses à utiliser, par exemple :
 
 ```
-  Présentateur : http://192.168.1.42:3000/host
-  Joueurs      : http://192.168.1.42:3000
-  Code salle   : ABC123
+  Accueil : http://192.168.1.42:3000/
+  • Stéphane & Marie → http://192.168.1.42:3000/quiz/parents/host  (code ABC123)
+  • Clément & Charlotte → http://192.168.1.42:3000/quiz/clement/host  (code XYZ789)
 ```
 
-Ouvre **`/host`** sur l'écran de présentation, et **`/`** sur les téléphones.
+Ouvre **`/`** (accueil) pour choisir un quiz, ou va directement sur
+**`/quiz/<id>/host`** pour l'écran de présentation. Les joueurs, eux, scannent
+simplement le QR code affiché.
 
 ---
 
@@ -47,8 +59,8 @@ Ouvre **`/host`** sur l'écran de présentation, et **`/`** sur les téléphones
 
 1. Vérifie que l'ordinateur (serveur) et les téléphones sont sur **le même Wi-Fi**.
 2. Lance `npm start`.
-3. Sur l'écran présentateur, ouvre `http://<IP-DE-TON-PC>:3000/host`
-   (l'IP est affichée dans la console au démarrage, ex. `192.168.1.42`).
+3. Ouvre `http://<IP-DE-TON-PC>:3000/` (accueil) et choisis un quiz → écran
+   présentateur (l'IP est affichée dans la console au démarrage, ex. `192.168.1.42`).
 4. Les invités scannent le **QR code** affiché → ils arrivent directement sur la
    page joueur avec le code salle prérempli. (Sinon : `http://<IP>:3000` + saisir
    le code PIN.)
@@ -120,7 +132,7 @@ Idéal si tu veux une URL stable préparée à l'avance.
 4. Render fournit une URL `https://ton-quiz.onrender.com`. Le serveur détecte
    automatiquement l'URL publique (en-têtes du proxy), donc le QR code sera bon.
    Au besoin, ajoute une variable d'environnement `PUBLIC_URL` avec cette URL.
-5. Ouvre `https://ton-quiz.onrender.com/host` pour le présentateur.
+5. Ouvre `https://ton-quiz.onrender.com/` (accueil), puis choisis un quiz.
 
 **Railway (https://railway.app) :**
 
@@ -130,7 +142,7 @@ Idéal si tu veux une URL stable préparée à l'avance.
 4. Dans **Settings → Networking**, clique **Generate Domain** pour obtenir une
    URL publique `https://ton-quiz.up.railway.app`.
 5. (Optionnel) Ajoute la variable `PUBLIC_URL` = cette URL.
-6. Présentateur : `https://ton-quiz.up.railway.app/host`.
+6. Accueil : `https://ton-quiz.up.railway.app/` (puis choix du quiz).
 
 > ⚠️ Sur l'offre gratuite de Render, le service peut se « mettre en veille »
 > après inactivité : ouvre la page quelques minutes avant la soirée pour le
@@ -140,20 +152,28 @@ Idéal si tu veux une URL stable préparée à l'avance.
 
 ## ✏️ Modifier les questions
 
-Toutes les questions sont dans **`questions.js`** — facile à éditer. Chaque
-question a un énoncé, 4 options et l'index de la bonne réponse :
+Chaque quiz a son propre fichier de questions, facile à éditer :
+- **`questions.js`** → quiz **Stéphane & Marie** (`parents`)
+- **`questions-clement.js`** → quiz **Clément & Charlotte** (`clement`) *(exemples à remplacer)*
+
+Chaque question a un énoncé, 4 options et l'index de la bonne réponse :
 
 ```js
 {
   text: "Ma question ?",
   options: ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
   correct: 2,   // 0 = A, 1 = B, 2 = C, 3 = D
-  time: 20,     // durée en secondes (optionnel)
+  time: 30,     // durée en secondes (optionnel, 30 par défaut)
 }
 ```
 
 L'ordre des options détermine la couleur/forme de la tuile :
 `0 → 🔺 rouge`, `1 → 🔷 bleu`, `2 → 🟡 rond jaune`, `3 → 🟩 carré vert`.
+
+### Ajouter un nouveau quiz
+Crée un fichier `questions-monquiz.js`, puis déclare-le dans `server.js` (objet
+`QUIZ_DEFS`) avec un `id`, les deux prénoms et le fichier de questions. Il apparaîtra
+automatiquement sur la page d'accueil.
 
 ---
 
@@ -168,9 +188,11 @@ L'ordre des options détermine la couleur/forme de la tuile :
 ## 🎛️ Contrôles présentateur
 
 - **Démarrer le quiz** depuis le lobby.
-- **Révéler la réponse** à tout moment (sinon révélation automatique à la fin du
-  compte à rebours ou quand tout le monde a répondu).
+- **Révéler la réponse** (petit bouton en bas à droite) à tout moment — sinon
+  révélation automatique à la fin du compte à rebours ou quand tout le monde a répondu.
 - **Question suivante** après chaque révélation.
+- **Exclure tout le monde & nouveau code** depuis le lobby (vide la salle et génère
+  un nouveau code PIN + QR — pratique après les tests).
 - **Recommencer une partie** depuis le podium (remet tous les scores à zéro).
 
 ---

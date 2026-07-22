@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soirée Quiz — Accueil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="hero">
+      <div class="kicker">Bienvenue</div>
+      <div class="names display">Soirée Quiz</div>
+      <div class="subtitle">Choisis le quiz auquel tu veux jouer 🎉</div>
+    </header>
+
+    <section class="grow center">
+      <div id="quiz-list" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:22px; width:min(880px,100%);">
+        <!-- Cartes de quiz injectées ici -->
+        <div class="card center muted" id="loading">Chargement des quiz…</div>
+      </div>
+    </section>
+
+    <footer class="center muted" style="margin-top:18px; font-size:0.85rem;">
+      Fait avec ♥ pour la fête
+    </footer>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <script src="/js/confetti.js"></script>
+  <script>
+    (function () {
+      const list = document.getElementById("quiz-list");
+      fetch("/api/quizzes")
+        .then((r) => r.json())
+        .then((quizzes) => {
+          list.innerHTML = "";
+          quizzes.forEach((q) => {
+            const card = document.createElement("div");
+            card.className = "card col";
+            card.style.gap = "14px";
+            card.style.textAlign = "center";
+            const badge =
+              q.questionCount > 0
+                ? `${q.questionCount} question${q.questionCount > 1 ? "s" : ""}`
+                : "Questions à venir";
+            card.innerHTML = `
+              <div class="display" style="font-size:1.8rem;">
+                ${q.nameLeft} <span class="heart">♥</span> ${q.nameRight}
+              </div>
+              <div class="muted">${q.subtitle}</div>
+              <div class="pill display" style="align-self:center;">${badge}</div>
+              <div class="grow"></div>
+              <a class="btn big" href="/quiz/${q.id}/host">Écran présentateur ▶</a>
+              <a class="btn secondary" href="/quiz/${q.id}">Rejoindre en joueur 📱</a>
+            `;
+            list.appendChild(card);
+          });
+          confetti.burst(80);
+        })
+        .catch(() => {
+          list.innerHTML = '<div class="card center rose-text">Impossible de charger les quiz.</div>';
+        });
+    })();
+  </script>
+</body>
+</html>

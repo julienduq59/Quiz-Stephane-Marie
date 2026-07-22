@@ -90,6 +90,9 @@ html, body {
   background: linear-gradient(90deg, var(--gold), #ffc24b);
   transition: transform 0.08s ease, filter 0.15s ease, opacity 0.15s;
   box-shadow: 0 8px 22px rgba(255, 209, 102, 0.3);
+  text-decoration: none;
+  text-align: center;
+  display: inline-block;
 }
 .btn:hover { filter: brightness(1.05); }
 .btn:active { transform: translateY(2px); }
