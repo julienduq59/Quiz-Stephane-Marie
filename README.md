@@ -196,7 +196,8 @@ automatiquement sur la page d'accueil.
 - **Démarrer le quiz** depuis le lobby.
 - **Révéler la réponse** (petit bouton en bas à droite) à tout moment — sinon
   révélation automatique à la fin du compte à rebours ou quand tout le monde a répondu.
-- **Question suivante** après chaque révélation.
+- **Question suivante** après chaque révélation (bouton en haut **et** en bas de
+  l'écran de résultats — le bouton du haut reste visible même avec un long classement).
 - **🔊 Voix** (bouton en haut à droite) : lecture vocale automatique de chaque
   question et de ses réponses en français, à l'affichage de la question (synthèse
   vocale du navigateur). Activée par défaut, coupable d'un clic. La voix sort sur
@@ -204,6 +205,14 @@ automatiquement sur la page d'accueil.
 - **Exclure tout le monde & nouveau code** depuis le lobby (vide la salle et génère
   un nouveau code PIN + QR — pratique après les tests).
 - **Recommencer une partie** depuis le podium (remet tous les scores à zéro).
+
+### 🔁 Reconnexion (reprise de score)
+Un joueur qui ferme le site par erreur peut **rejoindre en cours de partie** :
+- **Même téléphone** : il rouvre le lien, re-clique « Entrer » → son score est repris
+  automatiquement (identité mémorisée).
+- **Autre appareil / mémoire effacée** : il remet le **lien + le code** et **le même
+  prénom** → il récupère le score de sa session précédente. Un message
+  « Rebienvenue, ton score est conservé » le confirme.
 
 ---
 

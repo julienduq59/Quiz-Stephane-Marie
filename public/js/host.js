@@ -218,7 +218,9 @@
     renderQuestionTiles($("r-tiles"), currentOptions, { correct: d.correct, distribution: d.distribution });
     renderLeaderboard($("r-leaderboard"), d.leaderboard, 8);
     const isLast = d.index + 1 >= qTotal;
-    $("btn-next").textContent = isLast ? "Voir le podium 🏆" : "Question suivante ▶";
+    const label = isLast ? "Voir le podium 🏆" : "Question suivante ▶";
+    $("btn-next").textContent = label;
+    $("btn-next-top").textContent = label;
     confetti.burst(60);
   });
 
@@ -242,6 +244,7 @@
   $("btn-start").addEventListener("click", () => socket.emit("host:start"));
   $("btn-reveal").addEventListener("click", () => { $("btn-reveal").disabled = true; socket.emit("host:reveal"); });
   $("btn-next").addEventListener("click", () => socket.emit("host:next"));
+  $("btn-next-top").addEventListener("click", () => socket.emit("host:next"));
   $("btn-restart").addEventListener("click", () => socket.emit("host:restart"));
   $("btn-new-room").addEventListener("click", () => {
     if (confirm("Exclure tous les joueurs et générer un nouveau code de salle ?")) {
