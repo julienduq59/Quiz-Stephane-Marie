@@ -27,7 +27,7 @@ son code PIN et son QR) :
 
 Le dépôt contient un blueprint `render.yaml` : clique le bouton, connecte ton
 compte Render, valide → tu obtiens une URL publique stable
-`https://soiree-quiz-stephane-marie.onrender.com` (accueil sur `/`, puis choix du quiz).
+`https://quiz-julien.onrender.com` (accueil sur `/`, puis choix du quiz).
 
 ---
 
