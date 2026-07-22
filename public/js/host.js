@@ -5,6 +5,51 @@
   // Quiz courant, déduit de l'URL : /quiz/<quizId>/host
   const quizId = location.pathname.split("/")[2] || "parents";
 
+  /* ---------- Synthèse vocale (lecture des questions en français) ---------- */
+  const TTS = "speechSynthesis" in window;
+  let ttsEnabled = localStorage.getItem("quiz_tts") !== "off"; // activé par défaut
+  let frVoice = null;
+  function pickVoice() {
+    if (!TTS) return;
+    const voices = speechSynthesis.getVoices() || [];
+    frVoice =
+      voices.find((v) => /^fr[-_]?fr/i.test(v.lang)) ||
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("fr")) ||
+      null;
+  }
+  if (TTS) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+  function stopSpeaking() {
+    if (TTS) speechSynthesis.cancel();
+  }
+  function speak(text) {
+    if (!TTS || !ttsEnabled || !text) return;
+    stopSpeaking();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "fr-FR";
+    if (frVoice) u.voice = frVoice;
+    u.rate = 0.98;
+    speechSynthesis.speak(u);
+  }
+  function speakQuestion(q) {
+    if (!q) return;
+    const labels = ["Rouge", "Bleu", "Jaune", "Vert"];
+    const opts = q.options
+      .map((o, i) => `${labels[i] || "Réponse " + (i + 1)} : ${o}.`)
+      .join(" ");
+    speak(`${q.text} … ${opts}`);
+  }
+  function updateTtsButton() {
+    const b = document.getElementById("btn-tts");
+    if (!b) return;
+    b.textContent = ttsEnabled ? "🔊 Voix" : "🔇 Voix";
+    b.style.opacity = ttsEnabled ? "1" : "0.55";
+    if (!TTS) { b.style.display = "none"; }
+  }
+  updateTtsButton();
+
   const TILES = [
     { cls: "red", shape: "triangle" },
     { cls: "blue", shape: "diamond" },
@@ -160,13 +205,14 @@
 
   socket.on("players", (d) => renderPlayers(d.players, d.count));
 
-  socket.on("question", (q) => renderQuestion(q));
+  socket.on("question", (q) => { renderQuestion(q); speakQuestion(q); });
 
   socket.on("tick", (d) => { $("timer").textContent = d.timeLeft; });
 
   socket.on("answerCount", (d) => { $("answer-count").textContent = d.answerCount; });
 
   socket.on("reveal", (d) => {
+    stopSpeaking();
     show("reveal");
     $("r-text").textContent = currentText + "  →  " + currentOptions[d.correct];
     renderQuestionTiles($("r-tiles"), currentOptions, { correct: d.correct, distribution: d.distribution });
@@ -177,6 +223,7 @@
   });
 
   socket.on("podium", (d) => {
+    stopSpeaking();
     show("podium");
     renderPodium(d.podium);
     renderLeaderboard($("full-leaderboard"), d.leaderboard);
@@ -185,6 +232,7 @@
   });
 
   socket.on("reset", (d) => {
+    stopSpeaking();
     $("pin").textContent = d.pin;
     show("lobby");
     confetti.stop();
@@ -200,9 +248,17 @@
       socket.emit("host:newRoom");
     }
   });
+  $("btn-tts").addEventListener("click", () => {
+    ttsEnabled = !ttsEnabled;
+    localStorage.setItem("quiz_tts", ttsEnabled ? "on" : "off");
+    updateTtsButton();
+    if (!ttsEnabled) stopSpeaking();
+    else speak("Lecture vocale activée."); // teste la voix + débloque l'autorisation navigateur
+  });
 
   // Salle réinitialisée : nouveau PIN + nouveau QR, retour au lobby vide
   socket.on("newRoom", (d) => {
+    stopSpeaking();
     $("pin").textContent = d.pin;
     refreshConnectInfo();
     show("lobby");

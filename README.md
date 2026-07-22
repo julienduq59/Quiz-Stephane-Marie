@@ -191,6 +191,10 @@ automatiquement sur la page d'accueil.
 - **Révéler la réponse** (petit bouton en bas à droite) à tout moment — sinon
   révélation automatique à la fin du compte à rebours ou quand tout le monde a répondu.
 - **Question suivante** après chaque révélation.
+- **🔊 Voix** (bouton en haut à droite) : lecture vocale automatique de chaque
+  question et de ses réponses en français, à l'affichage de la question (synthèse
+  vocale du navigateur). Activée par défaut, coupable d'un clic. La voix sort sur
+  l'écran présentateur — pense à monter le son du vidéoprojecteur / des enceintes.
 - **Exclure tout le monde & nouveau code** depuis le lobby (vide la salle et génère
   un nouveau code PIN + QR — pratique après les tests).
 - **Recommencer une partie** depuis le podium (remet tous les scores à zéro).
