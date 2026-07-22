@@ -11,7 +11,10 @@
 </head>
 <body>
   <div class="app" id="app">
-    <div id="pin-badge" class="display" style="position:fixed; top:14px; left:14px; z-index:60; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.22); border-radius:12px; padding:8px 14px; font-size:0.95rem;">Code : <span id="pin-badge-code" class="gold" style="letter-spacing:0.18em;">······</span></div>
+    <div id="pin-badge" class="display" style="position:fixed; top:14px; left:14px; z-index:60; background:rgba(0,0,0,0.42); border:1px solid rgba(255,255,255,0.22); border-radius:14px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <img id="pin-badge-qr" alt="QR code" style="width:120px; height:120px; border-radius:8px; background:#fff; padding:4px;" />
+      <div style="font-size:0.9rem;">Code : <span id="pin-badge-code" class="gold" style="letter-spacing:0.18em;">······</span></div>
+    </div>
     <button id="btn-tts" class="btn secondary" style="position:fixed; top:14px; right:14px; z-index:60; font-size:0.85rem; padding:8px 14px;">🔊 Voix</button>
     <header class="hero">
       <div class="kicker">Soirée Quiz</div>
