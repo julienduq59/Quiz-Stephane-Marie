@@ -2,6 +2,23 @@
 (function () {
   const socket = io();
 
+  // Quiz courant, déduit de l'URL : /quiz/<quizId>
+  const quizId = location.pathname.split("/")[2] || "parents";
+
+  // Personnalise le hero (noms du couple) dès le chargement
+  function setNames(nameLeft, nameRight) {
+    if (!nameLeft || !nameRight) return;
+    const h = document.getElementById("hero-names");
+    if (h) h.innerHTML = `${nameLeft} <span class="heart">♥</span> ${nameRight}`;
+    const th = document.getElementById("thanks");
+    if (th) th.textContent = `Merci d'avoir joué pour ${nameLeft} & ${nameRight} ♥`;
+    document.title = `${nameLeft} & ${nameRight} — Quiz`;
+  }
+  fetch("/api/connect-info?quiz=" + encodeURIComponent(quizId))
+    .then((r) => r.json())
+    .then((info) => setNames(info.nameLeft, info.nameRight))
+    .catch(() => {});
+
   const TILES = [
     { cls: "red", shape: "triangle" },
     { cls: "blue", shape: "diamond" },
@@ -54,7 +71,7 @@
     if (!name) { $("join-error").textContent = "Entre ton prénom !"; return; }
     $("btn-join").disabled = true;
     $("join-error").textContent = "";
-    socket.emit("player:join", { name, pin, playerId: store.id || null }, (res) => {
+    socket.emit("player:join", { quizId, name, pin, playerId: store.id || null }, (res) => {
       $("btn-join").disabled = false;
       if (!res || !res.ok) {
         $("join-error").textContent = (res && res.error) || "Connexion impossible.";
@@ -64,6 +81,7 @@
       store.id = res.playerId;
       store.name = res.name;
       myScore = res.score || 0;
+      setNames(res.nameLeft, res.nameRight);
       $("wait-name").textContent = res.name;
       $("wait-score").textContent = myScore;
       if (res.state === "lobby") show("wait");
@@ -79,7 +97,7 @@
   // joueur saisir/valider son prénom sur l'écran « Rejoindre » (prénom pré-rempli).
   socket.on("connect", () => {
     if (joined && store.id) {
-      socket.emit("player:join", { name: store.name, playerId: store.id }, (res) => {
+      socket.emit("player:join", { quizId, name: store.name, playerId: store.id }, (res) => {
         if (res && res.ok) {
           myScore = res.score || 0;
           $("wait-name").textContent = res.name;
