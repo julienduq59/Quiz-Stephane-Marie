@@ -78,6 +78,13 @@
     for (const k in screens) screens[k].classList.toggle("hidden", k !== name);
   }
 
+  // Met à jour le code affiché partout (lobby + badge permanent en haut à gauche)
+  function setPin(pin) {
+    if (!pin) return;
+    const a = $("pin"); if (a) a.textContent = pin;
+    const b = $("pin-badge-code"); if (b) b.textContent = pin;
+  }
+
   /* ---------- Connect info / QR ---------- */
   function refreshConnectInfo() {
     return fetch("/api/connect-info?quiz=" + encodeURIComponent(quizId))
@@ -85,7 +92,7 @@
       .then((info) => {
         if (info.qr) $("qr").src = info.qr;
         if (info.url) $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
-        if (info.pin) $("pin").textContent = info.pin;
+        if (info.pin) setPin(info.pin);
         if (info.names && info.names.length) {
           $("hero-names").innerHTML = info.names.join(' <span class="heart">♥</span> ');
           document.title = info.names.join(" & ") + " — Présentateur";
@@ -197,7 +204,7 @@
   socket.on("connect", () => socket.emit("host:join", { quizId }));
 
   socket.on("host:state", (s) => {
-    $("pin").textContent = s.pin;
+    setPin(s.pin);
     renderPlayers(s.players, s.count);
     if (s.state === "question" && s.question) renderQuestion(s.question);
     else if (s.state === "lobby") show("lobby");
@@ -235,7 +242,7 @@
 
   socket.on("reset", (d) => {
     stopSpeaking();
-    $("pin").textContent = d.pin;
+    setPin(d.pin);
     show("lobby");
     confetti.stop();
   });
@@ -262,7 +269,7 @@
   // Salle réinitialisée : nouveau PIN + nouveau QR, retour au lobby vide
   socket.on("newRoom", (d) => {
     stopSpeaking();
-    $("pin").textContent = d.pin;
+    setPin(d.pin);
     refreshConnectInfo();
     show("lobby");
     confetti.stop();
