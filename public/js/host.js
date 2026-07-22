@@ -76,6 +76,8 @@
   };
   function show(name) {
     for (const k in screens) screens[k].classList.toggle("hidden", k !== name);
+    const app = document.getElementById("app");
+    if (app) app.dataset.screen = name;
   }
 
   // Met à jour le code affiché partout (lobby + badge permanent en haut à gauche)

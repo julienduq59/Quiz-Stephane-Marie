@@ -19,10 +19,13 @@
       #pin-badge { padding: 7px; }
       #pin-badge > div { font-size: 0.78rem !important; }
     }
+    /* Sur le lobby : le grand QR est déjà affiché → on masque le badge et on retire la gouttière */
+    #app[data-screen="lobby"] { padding-left: clamp(14px, 3vw, 36px); }
+    #app[data-screen="lobby"] #pin-badge { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="app" id="app">
+  <div class="app" id="app" data-screen="lobby">
     <div id="pin-badge" class="display" style="position:fixed; top:14px; left:14px; z-index:60; background:rgba(0,0,0,0.42); border:1px solid rgba(255,255,255,0.22); border-radius:14px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px;">
       <img id="pin-badge-qr" alt="QR code" style="border-radius:8px; background:#fff; padding:4px;" />
       <div style="font-size:0.9rem;">Code : <span id="pin-badge-code" class="gold" style="letter-spacing:0.18em;">······</span></div>
