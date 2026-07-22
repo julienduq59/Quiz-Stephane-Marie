@@ -80,6 +80,34 @@ const QUESTIONS = [
     correct: 1, // Le merveilleux
     time: 30,
   },
+  {
+    text: "Qui était le premier flirt d'Émilie ?",
+    options: ["Sevan", "Timéo", "Raphaël", "Ethan"],
+    correct: 2, // Raphaël
+    time: 30,
+  },
+  {
+    text: "Qui sont le parrain et la marraine d'Émilie ?",
+    options: [
+      "Olivier et Isabelle",
+      "Laurent et Cécile",
+      "Annie et Sébastien",
+      "Laurent et Annie",
+    ],
+    correct: 3, // Laurent et Annie
+    time: 30,
+  },
+  {
+    text: "Quelle est la plus grosse bêtise qu'Émilie a faite ?",
+    options: [
+      "Elle a coupé les cheveux de son frère",
+      "Elle a brisé la vitre du poêle à bois avec une voiture miniature",
+      "Elle a dessiné sur la portière de la voiture avec un caillou",
+      "Elle s'est sauvée de l'école maternelle",
+    ],
+    correct: 2, // Elle a dessiné sur la portière de la voiture avec un caillou
+    time: 30,
+  },
 ];
 
 module.exports = QUESTIONS;
