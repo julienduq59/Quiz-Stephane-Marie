@@ -41,10 +41,9 @@
         if (info.qr) $("qr").src = info.qr;
         if (info.url) $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
         if (info.pin) $("pin").textContent = info.pin;
-        if (info.nameLeft && info.nameRight) {
-          $("hero-names").innerHTML =
-            `${info.nameLeft} <span class="heart">♥</span> ${info.nameRight}`;
-          document.title = `${info.nameLeft} & ${info.nameRight} — Présentateur`;
+        if (info.names && info.names.length) {
+          $("hero-names").innerHTML = info.names.join(' <span class="heart">♥</span> ');
+          document.title = info.names.join(" & ") + " — Présentateur";
         }
       })
       .catch(() => {});

@@ -35,15 +35,13 @@ const PORT = process.env.PORT || 3000;
 const QUIZ_DEFS = {
   parents: {
     id: "parents",
-    nameLeft: "Stéphane",
-    nameRight: "Marie",
-    subtitle: "La soirée quiz de Stéphane & Marie",
+    names: ["Stéphane", "Marie", "Émilie"],
+    subtitle: "Double anniversaire — Stéphane, Marie & Émilie",
     questions: require("./questions"),
   },
   clement: {
     id: "clement",
-    nameLeft: "Clément",
-    nameRight: "Charlotte",
+    names: ["Clément", "Charlotte"],
     subtitle: "Le quiz du mariage de Clément & Charlotte",
     questions: require("./questions-clement"),
   },
@@ -52,8 +50,7 @@ const QUIZ_DEFS = {
 function quizPublicList() {
   return Object.values(QUIZ_DEFS).map((d) => ({
     id: d.id,
-    nameLeft: d.nameLeft,
-    nameRight: d.nameRight,
+    names: d.names,
     subtitle: d.subtitle,
     questionCount: d.questions.length,
   }));
@@ -105,7 +102,7 @@ app.get("/api/connect-info", async (req, res) => {
     });
     res.json({
       url, joinUrl, qr, pin: room.pin, quizId,
-      nameLeft: def.nameLeft, nameRight: def.nameRight,
+      names: def.names,
       subtitle: def.subtitle, questionCount: def.questions.length,
     });
   } catch (err) {
@@ -464,8 +461,7 @@ io.on("connection", (socket) => {
         name: player.name,
         score: player.score,
         state: room.state,
-        nameLeft: def.nameLeft,
-        nameRight: def.nameRight,
+        names: def.names,
       });
     }
 
@@ -560,7 +556,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("  ───────────────────────────────────────");
   console.log(`  Accueil : ${url}/`);
   for (const d of Object.values(QUIZ_DEFS)) {
-    console.log(`  • ${d.nameLeft} & ${d.nameRight} → ${url}/quiz/${d.id}/host  (code ${rooms[d.id].pin})`);
+    console.log(`  • ${d.names.join(" & ")} → ${url}/quiz/${d.id}/host  (code ${rooms[d.id].pin})`);
   }
   console.log("  ───────────────────────────────────────\n");
 });
