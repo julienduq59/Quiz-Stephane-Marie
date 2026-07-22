@@ -173,11 +173,22 @@ function makeRoom(quizId) {
     state: STATES.LOBBY,
     players: new Map(), // playerId -> { id, name, score, connected, socketId, lastAnswer }
     currentIndex: -1,
+    order: [], // ordre (mélangé) des questions pour la partie en cours
     questionStartedAt: 0,
     answers: new Map(), // playerId -> { choice, time, correct, points }
     timer: null,
     timeLeft: 0,
   };
+}
+
+// Mélange de Fisher-Yates (renvoie une nouvelle liste)
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 const rooms = {};
@@ -203,7 +214,10 @@ function leaderboard(room) {
 }
 
 function currentQuestion(room) {
-  return questionsOf(room)[room.currentIndex];
+  const questions = questionsOf(room);
+  // room.order contient l'ordre mélangé ; on retombe sur l'ordre naturel au besoin
+  const qi = room.order && room.order.length ? room.order[room.currentIndex] : room.currentIndex;
+  return questions[qi];
 }
 
 // Vue de la question SANS la bonne réponse (envoyée à tous pendant le jeu)
@@ -234,6 +248,10 @@ function answerCount(room) {
 
 function startQuestion(room) {
   const questions = questionsOf(room);
+  // Nouvelle partie → on (re)mélange l'ordre des questions
+  if (room.currentIndex === -1) {
+    room.order = shuffle(questions.map((_, i) => i));
+  }
   if (room.currentIndex + 1 >= questions.length) {
     showPodium(room);
     return;

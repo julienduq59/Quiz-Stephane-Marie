@@ -170,6 +170,12 @@ Chaque question a un énoncé, 4 options et l'index de la bonne réponse :
 L'ordre des options détermine la couleur/forme de la tuile :
 `0 → 🔺 rouge`, `1 → 🔷 bleu`, `2 → 🟡 rond jaune`, `3 → 🟩 carré vert`.
 
+> 🔀 **L'ordre des questions est mélangé aléatoirement à chaque partie.** En
+> revanche, **l'ordre des réponses reste fixe** (celui du fichier) : pratique pour
+> les réponses récurrentes (ex. « Stéphane » toujours à gauche, « Marie » à droite).
+> Tu peux mettre 2, 3 ou 4 options par question (une question à 2 options s'affiche
+> avec 2 tuiles, comme un vrai/faux).
+
 ### Ajouter un nouveau quiz
 Crée un fichier `questions-monquiz.js`, puis déclare-le dans `server.js` (objet
 `QUIZ_DEFS`) avec un `id`, les deux prénoms et le fichier de questions. Il apparaîtra
