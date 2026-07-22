@@ -47,10 +47,9 @@
               q.questionCount > 0
                 ? `${q.questionCount} question${q.questionCount > 1 ? "s" : ""}`
                 : "Questions à venir";
+            const heroNames = (q.names || []).join(' <span class="heart">♥</span> ');
             card.innerHTML = `
-              <div class="display" style="font-size:1.8rem;">
-                ${q.nameLeft} <span class="heart">♥</span> ${q.nameRight}
-              </div>
+              <div class="display" style="font-size:1.8rem;">${heroNames}</div>
               <div class="muted">${q.subtitle}</div>
               <div class="pill display" style="align-self:center;">${badge}</div>
               <div class="grow"></div>

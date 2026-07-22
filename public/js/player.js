@@ -5,18 +5,22 @@
   // Quiz courant, déduit de l'URL : /quiz/<quizId>
   const quizId = location.pathname.split("/")[2] || "parents";
 
-  // Personnalise le hero (noms du couple) dès le chargement
-  function setNames(nameLeft, nameRight) {
-    if (!nameLeft || !nameRight) return;
+  // Personnalise le hero (prénoms fêtés) dès le chargement
+  function joinNatural(names) {
+    if (names.length <= 1) return names[0] || "";
+    return names.slice(0, -1).join(", ") + " & " + names[names.length - 1];
+  }
+  function setNames(names) {
+    if (!names || !names.length) return;
     const h = document.getElementById("hero-names");
-    if (h) h.innerHTML = `${nameLeft} <span class="heart">♥</span> ${nameRight}`;
+    if (h) h.innerHTML = names.join(' <span class="heart">♥</span> ');
     const th = document.getElementById("thanks");
-    if (th) th.textContent = `Merci d'avoir joué pour ${nameLeft} & ${nameRight} ♥`;
-    document.title = `${nameLeft} & ${nameRight} — Quiz`;
+    if (th) th.textContent = `Merci d'avoir joué pour ${joinNatural(names)} ♥`;
+    document.title = names.join(" & ") + " — Quiz";
   }
   fetch("/api/connect-info?quiz=" + encodeURIComponent(quizId))
     .then((r) => r.json())
-    .then((info) => setNames(info.nameLeft, info.nameRight))
+    .then((info) => setNames(info.names))
     .catch(() => {});
 
   const TILES = [
@@ -81,7 +85,7 @@
       store.id = res.playerId;
       store.name = res.name;
       myScore = res.score || 0;
-      setNames(res.nameLeft, res.nameRight);
+      setNames(res.names);
       $("wait-name").textContent = res.name;
       $("wait-score").textContent = myScore;
       if (res.state === "lobby") show("wait");

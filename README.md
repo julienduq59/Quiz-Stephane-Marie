@@ -6,7 +6,7 @@ téléphone en scannant un QR code.
 
 La plateforme héberge **plusieurs quiz indépendants** (chacun avec sa propre salle,
 son code PIN et son QR) :
-- **Stéphane ♥ Marie** — la soirée quiz des parents
+- **Stéphane ♥ Marie ♥ Émilie** — la soirée double anniversaire
 - **Clément ♥ Charlotte** — le quiz du mariage *(questions d'exemple à remplacer)*
 
 ### Pages
