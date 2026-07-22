@@ -114,6 +114,12 @@ const QUESTIONS = [
     correct: 2, // Boxe
     time: 30,
   },
+  {
+    text: "Quelle activité Émilie pratique-t-elle avec son super génial frère ?",
+    options: ["Footing", "Théâtre", "Badminton", "Hyrox"],
+    correct: 2, // Badminton
+    time: 30,
+  },
   // Questions « Stéphane / Marie » : on garde toujours le même ordre de tuiles
   // (Stéphane à gauche, Marie à droite) pour que les joueurs se repèrent.
   {
