@@ -177,6 +177,8 @@ function makeRoom(quizId) {
     questionStartedAt: 0,
     answers: new Map(), // playerId -> { choice, time, correct, points }
     timer: null,
+    graceTimer: null, // petit délai avant révélation (réponses de dernière seconde)
+    expectedAnswers: 0, // nb de joueurs présents au lancement de la question
     timeLeft: 0,
   };
 }
@@ -260,6 +262,10 @@ function startQuestion(room) {
   room.state = STATES.QUESTION;
   room.answers = new Map();
   room.questionStartedAt = Date.now();
+  // Nombre de joueurs présents au départ : sert de référence pour la révélation
+  // automatique, afin qu'un téléphone qui se met en veille ne fasse pas baisser
+  // le total et ne coupe pas la question aux autres.
+  room.expectedAnswers = publicPlayerList(room).length;
   const q = questionPublic(room);
   room.timeLeft = q.time;
 
@@ -271,12 +277,16 @@ function startQuestion(room) {
   });
 
   clearInterval(room.timer);
+  clearTimeout(room.graceTimer);
   room.timer = setInterval(() => {
     room.timeLeft -= 1;
     io.to(hostRoom(room)).to(playersRoom(room)).emit("tick", { timeLeft: Math.max(0, room.timeLeft) });
     if (room.timeLeft <= 0) {
       clearInterval(room.timer);
-      revealAnswer(room);
+      // Délai de grâce : les réponses parties juste avant la fin ont le temps
+      // d'arriver (réseau mobile lent) avant qu'on révèle.
+      clearTimeout(room.graceTimer);
+      room.graceTimer = setTimeout(() => revealAnswer(room), 1500);
     }
   }, 1000);
 }
@@ -291,6 +301,7 @@ function computePoints(elapsedMs, totalSec) {
 function revealAnswer(room) {
   if (room.state !== STATES.QUESTION) return;
   clearInterval(room.timer);
+  clearTimeout(room.graceTimer);
   room.state = STATES.REVEAL;
   const q = currentQuestion(room);
 
@@ -329,6 +340,7 @@ function showLeaderboard(room) {
 
 function showPodium(room) {
   clearInterval(room.timer);
+  clearTimeout(room.graceTimer);
   room.state = STATES.PODIUM;
   const board = leaderboard(room);
   io.to(hostRoom(room)).emit("podium", { podium: board.slice(0, 3), leaderboard: board });
@@ -340,6 +352,7 @@ function showPodium(room) {
 
 function resetGame(room) {
   clearInterval(room.timer);
+  clearTimeout(room.graceTimer);
   room.state = STATES.LOBBY;
   room.currentIndex = -1;
   room.answers = new Map();
@@ -355,6 +368,7 @@ function resetGame(room) {
 // Exclut tous les joueurs et génère un nouveau code de salle (nouveau QR).
 function newRoom(room) {
   clearInterval(room.timer);
+  clearTimeout(room.graceTimer);
   room.pin = makePin();
   room.state = STATES.LOBBY;
   room.currentIndex = -1;
@@ -571,8 +585,12 @@ io.on("connection", (socket) => {
 
     io.to(hostRoom(room)).emit("answerCount", { answerCount: answerCount(room), total: publicPlayerList(room).length });
 
-    const activePlayers = publicPlayerList(room).length;
-    if (activePlayers > 0 && answerCount(room) >= activePlayers) {
+    // On ne révèle automatiquement que si TOUT LE MONDE a répondu, en prenant le
+    // plus grand entre « joueurs au départ » et « joueurs connectés ». Sinon un
+    // téléphone en veille ferait baisser le total et couperait la question aux
+    // autres (c'est ce qui provoquait les « Trop tard » injustifiés).
+    const needed = Math.max(room.expectedAnswers || 0, publicPlayerList(room).length);
+    if (needed > 0 && answerCount(room) >= needed) {
       revealAnswer(room);
     }
   });

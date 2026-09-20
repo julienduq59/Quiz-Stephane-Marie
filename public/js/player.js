@@ -80,6 +80,7 @@
   let myScore = 0;
   let joined = false; // passe à true seulement après validation manuelle du prénom
   let currentOptions = []; // options de la question en cours (pour la révélation)
+  let pendingChoice = null; // réponse tapée, en attente de confirmation du serveur
 
   // Pré-remplir l'URL ?pin=XXXXXX (depuis le QR code)
   const urlPin = new URLSearchParams(location.search).get("pin");
@@ -125,9 +126,11 @@
       socket.emit("player:join", { quizId, name: store.name, playerId: store.id }, (res) => {
         if (res && res.ok) {
           myScore = res.score || 0;
+          store.id = res.playerId;
           $("wait-name").textContent = res.name;
           $("wait-score").textContent = myScore;
           if (res.state === "lobby") show("wait");
+          flushPendingAnswer(); // la réponse tapée hors ligne part maintenant
         }
       });
     }
@@ -148,26 +151,89 @@
     });
   }
 
-  function answer(choice) {
-    if (answered) return;
-    answered = true;
-    // surligne le choix
+  function markTiles(choice) {
     document.querySelectorAll("#p-tiles .tile").forEach((t) => {
       const idx = Number(t.dataset.index);
       if (idx === choice) t.classList.add("chosen");
       else t.classList.add("dim");
       t.style.pointerEvents = "none";
     });
-    socket.emit("player:answer", { choice }, (res) => {
-      if (!res || !res.ok) {
-        // si refusé (ex : déjà répondu via autre onglet) on garde l'état envoyé
-      }
-      $("answer-sent").classList.remove("hidden");
+  }
+  // Ré-ouvre les tuiles si la réponse n'a PAS été enregistrée
+  function unlockTiles() {
+    document.querySelectorAll("#p-tiles .tile").forEach((t) => {
+      t.classList.remove("chosen", "dim");
+      t.style.pointerEvents = "";
     });
+  }
+  function showSending() {
+    $("answer-error").classList.add("hidden");
+    $("answer-sent-title").textContent = "Envoi…";
+    $("answer-sent").classList.remove("hidden");
+  }
+  function showSent() {
+    $("answer-error").classList.add("hidden");
+    $("answer-sent-title").textContent = "Réponse envoyée ✓";
+    $("answer-sent").classList.remove("hidden");
+  }
+  function showAnswerError(msg) {
+    $("answer-sent").classList.add("hidden");
+    $("answer-error-text").textContent = msg;
+    $("answer-error").classList.remove("hidden");
+  }
+
+  // Envoie la réponse et traite VRAIMENT la réponse du serveur
+  function sendAnswer(choice, isRetry) {
+    socket.emit("player:answer", { choice }, (res) => {
+      if (res && res.ok) { pendingChoice = null; showSent(); return; }
+      const err = (res && res.error) || "";
+      if (err === "Déjà répondu.") { pendingChoice = null; showSent(); return; }
+      // Identité perdue (téléphone en veille → nouveau socket) : on se re-signale
+      // puis on renvoie la réponse. C'est ce cas qui provoquait les « Trop tard ».
+      if (!isRetry && (!res || err === "Joueur inconnu.")) {
+        socket.emit("player:join", { quizId, name: store.name, playerId: store.id }, (r2) => {
+          if (r2 && r2.ok) {
+            store.id = r2.playerId;
+            sendAnswer(choice, true);
+          } else {
+            pendingChoice = null; answered = false; unlockTiles();
+            showAnswerError("Connexion perdue — retouche ta réponse !");
+          }
+        });
+        return;
+      }
+      // Refus définitif : on le dit clairement au lieu de faire croire que c'est parti
+      pendingChoice = null;
+      answered = false;
+      unlockTiles();
+      showAnswerError(
+        err === "Pas de question en cours."
+          ? "Trop tard pour cette question…"
+          : "Réponse non enregistrée — retouche une réponse !"
+      );
+    });
+  }
+
+  function answer(choice) {
+    if (answered) return;
+    answered = true;
+    pendingChoice = choice;
+    markTiles(choice);
+    showSending();
+    // Hors ligne : la réponse partira dès la reconnexion (voir flushPendingAnswer)
+    if (!socket.connected) return;
+    sendAnswer(choice, false);
+  }
+
+  // Renvoie une réponse restée en attente après une coupure réseau
+  function flushPendingAnswer() {
+    if (pendingChoice !== null) sendAnswer(pendingChoice, true);
   }
 
   socket.on("question", (q) => {
     answered = false;
+    pendingChoice = null;
+    $("answer-error").classList.add("hidden");
     currentOptions = q.options;
     show("answer");
     $("p-index").textContent = q.index + 1;
@@ -179,13 +245,9 @@
 
   socket.on("answer:locked", (d) => {
     answered = true;
-    document.querySelectorAll("#p-tiles .tile").forEach((t) => {
-      const idx = Number(t.dataset.index);
-      if (idx === d.choice) t.classList.add("chosen");
-      else t.classList.add("dim");
-      t.style.pointerEvents = "none";
-    });
-    $("answer-sent").classList.remove("hidden");
+    pendingChoice = null; // le serveur confirme l'enregistrement
+    markTiles(d.choice);
+    showSent();
   });
 
   socket.on("tick", (d) => { $("p-timer").textContent = d.timeLeft; });
