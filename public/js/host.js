@@ -307,6 +307,8 @@
   socket.on("podium", (d) => {
     stopSpeaking();
     show("podium");
+    const rb = $("btn-results");
+    if (rb) rb.href = "/api/results.pdf?quiz=" + encodeURIComponent(quizId);
     renderPodium(d.podium);
     renderLeaderboard($("full-leaderboard"), d.leaderboard);
     confetti.shower(4000);
