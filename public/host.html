@@ -59,6 +59,7 @@
           <div class="grow"></div>
           <button id="btn-start" class="btn big" disabled>Démarrer le quiz ▶</button>
           <button id="btn-new-room" class="btn secondary">Exclure tout le monde &amp; nouveau code ↻</button>
+          <button id="btn-history" class="btn secondary">📚 Historique des parties</button>
           <div class="muted center" id="lobby-hint" style="font-size:0.9rem;">En attente d'au moins 1 joueur…</div>
         </div>
       </div>
@@ -109,6 +110,18 @@
         <button id="btn-restart" class="btn rose big">Recommencer une partie ↻</button>
       </div>
     </section>
+  </div>
+
+  <!-- HISTORIQUE DES PARTIES -->
+  <div id="history-modal" class="hidden" style="position:fixed; inset:0; z-index:90; background:rgba(10,4,24,0.82); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="card col" style="gap:14px; width:min(760px,100%); max-height:84vh;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="display">📚 Historique des parties</h2>
+        <button id="btn-history-close" class="btn secondary" style="padding:8px 16px; font-size:0.85rem;">Fermer ✕</button>
+      </div>
+      <div class="muted" style="font-size:0.88rem;">Chaque partie terminée est enregistrée automatiquement sur cet ordinateur.</div>
+      <div id="history-list" class="col" style="gap:10px; overflow:auto;"></div>
+    </div>
   </div>
 
   <canvas id="confetti"></canvas>

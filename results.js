@@ -90,6 +90,7 @@ function buildResults(room, def) {
 const PRUNE = "#2d1155", OR = "#b8860b", ROSE = "#c2185b", GRIS = "#555555";
 
 function fmtDate(d) {
+  d = d instanceof Date ? d : new Date(d);
   return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
