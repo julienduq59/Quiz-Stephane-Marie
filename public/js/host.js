@@ -4,6 +4,7 @@
 
   // Quiz courant, déduit de l'URL : /quiz/<quizId>/host
   const quizId = location.pathname.split("/")[2] || "parents";
+  let playerCount = 0; // joueurs connectés (pour « Réponses : n / total »)
 
   /* ---------- Synthèse vocale (lecture des questions en français) ---------- */
   const TTS = "speechSynthesis" in window;
@@ -173,6 +174,7 @@
 
   /* ---------- Player list ---------- */
   function renderPlayers(players, count) {
+    playerCount = count;
     $("player-count").textContent = count;
     const el = $("player-list");
     el.innerHTML = "";
@@ -215,7 +217,7 @@
     $("q-total").textContent = q.total;
     $("q-text").textContent = q.text;
     $("timer").textContent = q.time;
-    $("answer-count").textContent = q.answerCount || 0;
+    $("answer-count").textContent = (q.answerCount || 0) + " / " + playerCount;
     renderQuestionTiles($("q-tiles"), q.options, {});
     $("btn-reveal").disabled = false;
     currentOptions = q.options;
@@ -285,7 +287,9 @@
 
   socket.on("tick", (d) => { $("timer").textContent = d.timeLeft; });
 
-  socket.on("answerCount", (d) => { $("answer-count").textContent = d.answerCount; });
+  socket.on("answerCount", (d) => {
+    $("answer-count").textContent = d.answerCount + " / " + (d.total != null ? d.total : playerCount);
+  });
 
   socket.on("reveal", (d) => {
     stopSpeaking();

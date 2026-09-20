@@ -5,7 +5,7 @@
  *   - text    : l'énoncé de la question
  *   - options : exactement 4 réponses (l'ordre détermine les couleurs/formes des tuiles)
  *   - correct : l'index (0 à 3) de la bonne réponse
- *   - time    : (optionnel) durée du compte à rebours en secondes (30 par défaut)
+ *   - time    : (optionnel) durée du compte à rebours en secondes (40 par défaut)
  *
  * Les 4 tuiles côté joueur/présentateur sont toujours affichées dans cet ordre :
  *   index 0 → Rouge / Triangle
@@ -19,49 +19,49 @@ const QUESTIONS = [
     text: "Où Stéphane et Marie se sont-ils rencontrés pour la première fois ?",
     options: ["Discothèque", "Lycée", "Bowling", "Soirée"],
     correct: 2, // Bowling
-    time: 30,
+    time: 40,
   },
   {
     text: "Quelle connaissance Stéphane et Marie avaient-ils en commun ?",
     options: ["Sébastien", "Isabelle", "Christophe", "Annie"],
     correct: 3, // Annie
-    time: 30,
+    time: 40,
   },
   {
     text: "Quel sport Stéphane et Marie pratiquent-ils ensemble ?",
     options: ["CrossFit", "Footing", "Natation", "Musculation"],
     correct: 0, // CrossFit
-    time: 30,
+    time: 40,
   },
   {
     text: "Où Stéphane et Marie ont-ils passé leur voyage de noces ?",
     options: ["République Dominicaine", "Grèce", "Île Maurice", "Seychelles"],
     correct: 2, // Île Maurice
-    time: 30,
+    time: 40,
   },
   {
     text: "À quel âge Stéphane et Marie se sont-ils rencontrés ?",
     options: ["18 ans", "20 ans", "22 ans", "25 ans"],
     correct: 1, // 20 ans
-    time: 30,
+    time: 40,
   },
   {
     text: "Dans quelle ville Stéphane et Marie ont-ils emménagé ensemble pour la première fois ?",
     options: ["Leers", "Lys-lez-Lannoy", "Villeneuve d'Ascq", "Roubaix"],
     correct: 2, // Villeneuve d'Ascq
-    time: 30,
+    time: 40,
   },
   {
     text: "Quel surnom Léa a-t-elle donné à sa belle-mère ?",
     options: ["Mamie lapin", "Mamie gâteaux", "Mamie toutoule", "Mamie Couscous"],
     correct: 3, // Mamie Couscous
-    time: 30,
+    time: 40,
   },
   {
     text: "Quelle est leur région de vacances préférée ?",
     options: ["Côte d'Azur", "Bretagne", "Savoie", "Pays Basque"],
     correct: 3, // Pays Basque
-    time: 30,
+    time: 40,
   },
   {
     text: "Que s'est-il passé lors de la naissance de Julien ?",
@@ -72,19 +72,19 @@ const QUESTIONS = [
       "Stéphane a fondu en larmes",
     ],
     correct: 0, // Stéphane s'est évanoui
-    time: 30,
+    time: 40,
   },
   {
     text: "Quel est le gâteau préféré d'Émilie ?",
     options: ["L'opéra", "Le merveilleux", "La tarte meringuée au citron", "La tarte aux fraises"],
     correct: 1, // Le merveilleux
-    time: 30,
+    time: 40,
   },
   {
     text: "Qui était le premier flirt d'Émilie ?",
     options: ["Sevan", "Timéo", "Raphaël", "Ethan"],
     correct: 2, // Raphaël
-    time: 30,
+    time: 40,
   },
   {
     text: "Qui sont le parrain et la marraine d'Émilie ?",
@@ -95,7 +95,7 @@ const QUESTIONS = [
       "Laurent et Annie",
     ],
     correct: 3, // Laurent et Annie
-    time: 30,
+    time: 40,
   },
   {
     text: "Quelle est la plus grosse bêtise qu'Émilie a faite ?",
@@ -106,25 +106,25 @@ const QUESTIONS = [
       "Elle s'est sauvée de l'école maternelle",
     ],
     correct: 2, // Elle a dessiné sur la portière de la voiture avec un caillou
-    time: 30,
+    time: 40,
   },
   {
     text: "Quel sport Émilie a-t-elle pratiqué ?",
     options: ["Judo", "Athlétisme", "Boxe", "Handball"],
     correct: 2, // Boxe
-    time: 30,
+    time: 40,
   },
   {
     text: "Quelle activité Émilie pratique-t-elle avec son super génial frère ?",
     options: ["Footing", "Théâtre", "Badminton", "Hyrox"],
     correct: 2, // Badminton
-    time: 30,
+    time: 40,
   },
   {
     text: "Quel surnom Stéphane donnait-il à Émilie quand elle était petite ?",
     options: ["Nénette", "Crevette", "Casse-noisette", "Tati Danielle"],
     correct: 1, // Crevette
-    time: 30,
+    time: 40,
   },
   // Questions « Stéphane / Marie » : on garde toujours le même ordre de tuiles
   // (Stéphane à gauche, Marie à droite) pour que les joueurs se repèrent.
@@ -132,19 +132,19 @@ const QUESTIONS = [
     text: "Qui tient les comptes à la maison ?",
     options: ["Stéphane", "Marie"],
     correct: 0, // Stéphane
-    time: 30,
+    time: 40,
   },
   {
     text: "Qui fait la vaisselle ?",
     options: ["Stéphane", "Marie"],
     correct: 0, // Stéphane
-    time: 30,
+    time: 40,
   },
   {
     text: "Qui cuisine ?",
     options: ["Stéphane", "Marie"],
     correct: 1, // Marie
-    time: 30,
+    time: 40,
   },
 ];
 

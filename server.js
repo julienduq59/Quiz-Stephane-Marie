@@ -178,7 +178,6 @@ function makeRoom(quizId) {
     answers: new Map(), // playerId -> { choice, time, correct, points }
     timer: null,
     graceTimer: null, // petit délai avant révélation (réponses de dernière seconde)
-    expectedAnswers: 0, // nb de joueurs présents au lancement de la question
     timeLeft: 0,
   };
 }
@@ -231,7 +230,7 @@ function questionPublic(room) {
     total: questionsOf(room).length,
     text: q.text,
     options: q.options,
-    time: q.time || 30,
+    time: q.time || 40,
   };
 }
 
@@ -262,10 +261,6 @@ function startQuestion(room) {
   room.state = STATES.QUESTION;
   room.answers = new Map();
   room.questionStartedAt = Date.now();
-  // Nombre de joueurs présents au départ : sert de référence pour la révélation
-  // automatique, afin qu'un téléphone qui se met en veille ne fasse pas baisser
-  // le total et ne coupe pas la question aux autres.
-  room.expectedAnswers = publicPlayerList(room).length;
   const q = questionPublic(room);
   room.timeLeft = q.time;
 
@@ -574,7 +569,7 @@ io.on("connection", (socket) => {
     const q = currentQuestion(room);
     const elapsed = Date.now() - room.questionStartedAt;
     const isCorrect = choice === q.correct;
-    const points = isCorrect ? computePoints(elapsed, q.time || 30) : 0;
+    const points = isCorrect ? computePoints(elapsed, q.time || 40) : 0;
     player.score += points;
     player.lastAnswer = choice;
 
@@ -585,14 +580,10 @@ io.on("connection", (socket) => {
 
     io.to(hostRoom(room)).emit("answerCount", { answerCount: answerCount(room), total: publicPlayerList(room).length });
 
-    // On ne révèle automatiquement que si TOUT LE MONDE a répondu, en prenant le
-    // plus grand entre « joueurs au départ » et « joueurs connectés ». Sinon un
-    // téléphone en veille ferait baisser le total et couperait la question aux
-    // autres (c'est ce qui provoquait les « Trop tard » injustifiés).
-    const needed = Math.max(room.expectedAnswers || 0, publicPlayerList(room).length);
-    if (needed > 0 && answerCount(room) >= needed) {
-      revealAnswer(room);
-    }
+    // Pas de révélation automatique : la question tourne toujours jusqu'au bout
+    // du compte à rebours, même si tout le monde a déjà répondu. Cela garantit
+    // que les retardataires (téléphone en veille, lecture lente…) ont leur
+    // chance. Le présentateur peut toujours révéler plus tôt avec son bouton.
   });
 
   socket.on("disconnect", () => {
