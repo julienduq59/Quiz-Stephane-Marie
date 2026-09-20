@@ -163,7 +163,7 @@ Chaque question a un énoncé, 4 options et l'index de la bonne réponse :
   text: "Ma question ?",
   options: ["Réponse A", "Réponse B", "Réponse C", "Réponse D"],
   correct: 2,   // 0 = A, 1 = B, 2 = C, 3 = D
-  time: 30,     // durée en secondes (optionnel, 30 par défaut)
+  time: 40,     // durée en secondes (optionnel, 40 par défaut)
 }
 ```
 
@@ -194,8 +194,9 @@ automatiquement sur la page d'accueil.
 ## 🎛️ Contrôles présentateur
 
 - **Démarrer le quiz** depuis le lobby.
-- **Révéler la réponse** (petit bouton en bas à droite) à tout moment — sinon
-  révélation automatique à la fin du compte à rebours ou quand tout le monde a répondu.
+- **Révéler la réponse** (petit bouton en bas à droite) pour passer plus tôt.
+  Sinon la question tourne **toujours jusqu'au bout du compte à rebours (40 s)**,
+  même si tout le monde a déjà répondu : personne n'est coupé.
 - **Question suivante** après chaque révélation (bouton en haut **et** en bas de
   l'écran de résultats — le bouton du haut reste visible même avec un long classement).
 - **🔊 Voix** (bouton en haut à droite) : lecture vocale automatique de chaque

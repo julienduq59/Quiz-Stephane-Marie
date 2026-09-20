@@ -15,13 +15,13 @@ const QUESTIONS = [
     text: "(Exemple) Où Clément et Charlotte se sont-ils rencontrés ?",
     options: ["Au travail", "En vacances", "Par des amis", "À l'école"],
     correct: 2,
-    time: 30,
+    time: 40,
   },
   {
     text: "(Exemple) Quelle est leur destination de voyage de rêve ?",
     options: ["Le Japon", "L'Italie", "Les Maldives", "Le Canada"],
     correct: 0,
-    time: 30,
+    time: 40,
   },
 ];
 
