@@ -62,6 +62,7 @@ function quizPublicList() {
 /* ------------------------------------------------------------------ */
 
 // index:false pour que "/" ne serve pas automatiquement public/index.html
+app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/", (req, res) => {
@@ -99,6 +100,17 @@ app.get("/api/results", (req, res) => {
   const r = resultsOf(String(req.query.quiz || ""));
   if (!r) return res.status(404).json({ error: "Aucun résultat disponible." });
   res.json(r);
+});
+
+// Regénère un PDF à partir d'un récap sauvegardé côté navigateur (historique)
+app.post("/api/results.pdf", (req, res) => {
+  const r = req.body;
+  if (!r || !r.ranking || !r.questions) return res.status(400).send("Récapitulatif invalide.");
+  r.date = new Date(r.date || Date.now());
+  const jour = r.date.toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="resultats-quiz-${r.quizId || "quiz"}-${jour}.pdf"`);
+  writePdf(r, res);
 });
 
 app.get("/api/results.pdf", (req, res) => {

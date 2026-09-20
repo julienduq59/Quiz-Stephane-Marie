@@ -212,8 +212,14 @@ automatiquement sur la page d'accueil.
 classement complet, chiffres clés, faits marquants (réponse la plus rapide, question la
 plus piégeuse, sans-faute…) et le détail de chaque question avec son taux de réussite.
 
-> ⚠️ **Télécharge le PDF juste après la partie.** Les résultats vivent en mémoire :
-> ils sont perdus si le serveur redémarre ou se met en veille (offre gratuite Render).
+**Sauvegarde automatique** : chaque partie terminée est enregistrée sur l'ordinateur du
+présentateur (stockage du navigateur). Le bouton **« 📚 Historique des parties »** du
+lobby liste les parties passées (date, joueurs, vainqueur) et permet de **retélécharger
+le PDF** de n'importe laquelle, ou de la supprimer.
+
+> ℹ️ L'historique est propre à ce navigateur et à cet ordinateur. Le serveur, lui, ne
+> garde rien de façon durable (offre gratuite Render) : pense donc à utiliser toujours
+> le même poste pour présenter, ou à télécharger le PDF après la partie.
 
 Disponible aussi en API : `/api/results?quiz=<id>` (JSON) et `/api/results.pdf?quiz=<id>`.
 
