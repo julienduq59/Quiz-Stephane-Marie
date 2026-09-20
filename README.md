@@ -207,6 +207,16 @@ automatiquement sur la page d'accueil.
   un nouveau code PIN + QR — pratique après les tests).
 - **Recommencer une partie** depuis le podium (remet tous les scores à zéro).
 
+### 📄 Récapitulatif & export PDF
+À la fin de la partie, l'écran podium propose **« 📄 Télécharger les résultats (PDF) »** :
+classement complet, chiffres clés, faits marquants (réponse la plus rapide, question la
+plus piégeuse, sans-faute…) et le détail de chaque question avec son taux de réussite.
+
+> ⚠️ **Télécharge le PDF juste après la partie.** Les résultats vivent en mémoire :
+> ils sont perdus si le serveur redémarre ou se met en veille (offre gratuite Render).
+
+Disponible aussi en API : `/api/results?quiz=<id>` (JSON) et `/api/results.pdf?quiz=<id>`.
+
 ### 🔁 Reconnexion (reprise de score)
 Un joueur qui ferme le site par erreur peut **rejoindre en cours de partie** :
 - **Même téléphone** : il rouvre le lien, re-clique « Entrer » → son score est repris

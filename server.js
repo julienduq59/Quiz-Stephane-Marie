@@ -16,6 +16,7 @@ const http = require("http");
 const express = require("express");
 const { Server } = require("socket.io");
 const QRCode = require("qrcode");
+const { buildResults, writePdf } = require("./results");
 
 const app = express();
 const server = http.createServer(app);
@@ -83,6 +84,31 @@ app.get("/host", (req, res) => res.redirect("/quiz/parents/host"));
 // Liste des quiz (pour la page d'accueil)
 app.get("/api/quizzes", (req, res) => {
   res.json(quizPublicList());
+});
+
+// Récapitulatif de la dernière partie : JSON et PDF téléchargeable
+function resultsOf(quizId) {
+  const def = QUIZ_DEFS[quizId];
+  if (!def) return null;
+  const room = rooms[quizId];
+  // récap figé en fin de partie, sinon calcul à la volée si une partie est en cours
+  return room.lastResults || (room.history && room.history.length ? buildResults(room, def) : null);
+}
+
+app.get("/api/results", (req, res) => {
+  const r = resultsOf(String(req.query.quiz || ""));
+  if (!r) return res.status(404).json({ error: "Aucun résultat disponible." });
+  res.json(r);
+});
+
+app.get("/api/results.pdf", (req, res) => {
+  const quizId = String(req.query.quiz || "");
+  const r = resultsOf(quizId);
+  if (!r) return res.status(404).send("Aucun résultat disponible pour le moment.");
+  const jour = r.date.toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="resultats-quiz-${quizId}-${jour}.pdf"`);
+  writePdf(r, res);
 });
 
 // URL publique + QR + PIN pour un quiz donné (utilisé par l'écran présentateur)
@@ -178,6 +204,9 @@ function makeRoom(quizId) {
     answers: new Map(), // playerId -> { choice, time, correct, points }
     timer: null,
     graceTimer: null, // petit délai avant révélation (réponses de dernière seconde)
+    history: [], // détail de chaque question jouée (pour le récap / PDF)
+    startedAt: null, // début de la partie
+    lastResults: null, // récap de la dernière partie terminée
     timeLeft: 0,
   };
 }
@@ -252,6 +281,8 @@ function startQuestion(room) {
   // Nouvelle partie → on (re)mélange l'ordre des questions
   if (room.currentIndex === -1) {
     room.order = shuffle(questions.map((_, i) => i));
+    room.history = [];
+    room.startedAt = Date.now();
   }
   if (room.currentIndex + 1 >= questions.length) {
     showPodium(room);
@@ -313,6 +344,23 @@ function revealAnswer(room) {
     leaderboard: leaderboard(room),
   });
 
+  // Archive la question pour le récapitulatif de fin de partie
+  room.history.push({
+    text: q.text,
+    options: q.options.slice(),
+    correct: q.correct,
+    distribution: distribution.slice(0, q.options.length),
+    answers: Array.from(room.answers.entries()).map(([pid, a]) => ({
+      playerId: pid,
+      name: (room.players.get(pid) || {}).name || "?",
+      choice: a.choice,
+      correct: a.correct,
+      timeMs: a.time,
+      points: a.points,
+    })),
+    playersPresent: publicPlayerList(room).length,
+  });
+
   const board = leaderboard(room);
   for (const p of room.players.values()) {
     const a = room.answers.get(p.id);
@@ -337,6 +385,10 @@ function showPodium(room) {
   clearInterval(room.timer);
   clearTimeout(room.graceTimer);
   room.state = STATES.PODIUM;
+  // Fige le récapitulatif de la partie (classement + stats) pour l'export PDF
+  if (room.history && room.history.length) {
+    room.lastResults = buildResults(room, QUIZ_DEFS[room.quizId]);
+  }
   const board = leaderboard(room);
   io.to(hostRoom(room)).emit("podium", { podium: board.slice(0, 3), leaderboard: board });
   for (const p of room.players.values()) {
