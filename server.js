@@ -44,9 +44,36 @@ const QUIZ_DEFS = {
   blind: {
     id: "blind",
     names: ["Blind Test"],
-    subtitle: "🎵 Reconnais le titre ou l'artiste",
+    subtitle: "🎵 Variété française et internationale",
     questions: require("./questions-blind"),
     isBlind: true,
+  },
+  blind80: {
+    id: "blind80",
+    names: ["Blind Test 80"],
+    subtitle: "🕺 Les tubes des années 80",
+    questions: require("./questions-blind80"),
+    isBlind: true,
+  },
+  blindfilm: {
+    id: "blindfilm",
+    names: ["Blind Test Ciné"],
+    subtitle: "🎬 Devine le film à sa musique",
+    questions: require("./questions-blindfilm"),
+    isBlind: true,
+  },
+  blinddisney: {
+    id: "blinddisney",
+    names: ["Blind Test Disney"],
+    subtitle: "🧸 Chansons de dessins animés",
+    questions: require("./questions-blinddisney"),
+    isBlind: true,
+  },
+  culture: {
+    id: "culture",
+    names: ["Culture générale"],
+    subtitle: "🧠 20 questions pour toutes les générations",
+    questions: require("./questions-culture"),
   },
   clement: {
     id: "clement",
@@ -134,19 +161,27 @@ app.get("/api/results.pdf", (req, res) => {
 
 // Vérification de la playlist du blind test : quels extraits sont trouvés ?
 app.get("/api/blind-check", async (req, res) => {
-  const def = QUIZ_DEFS.blind;
-  if (!def) return res.status(404).json({ error: "Pas de blind test." });
-  const rows = await prewarm(def.questions);
-  res.json({
-    total: rows.length,
-    ok: rows.filter((r) => r.url).length,
-    manquants: rows.filter((r) => !r.url).map((r) => r.music.artist + " — " + r.music.title),
-    detail: rows.map((r) => ({
-      cherche: r.music.artist + " — " + r.music.title,
-      trouve: r.url ? r.artistName + " — " + r.trackName : null,
-      erreur: r.error || null,
-    })),
-  });
+  const seul = String(req.query.quiz || "");
+  const defs = Object.values(QUIZ_DEFS).filter((d) => d.isBlind && (!seul || d.id === seul));
+  if (!defs.length) return res.status(404).json({ error: "Aucun blind test correspondant." });
+  const out = {};
+  for (const def of defs) {
+    const rows = await prewarm(def.questions);
+    out[def.id] = {
+      nom: def.names.join(" "),
+      total: rows.length,
+      ok: rows.filter((r) => r.url).length,
+      manquants: rows.filter((r) => !r.url).map((r) => r.music.artist + " — " + r.music.title),
+      detail: rows.map((r) => ({
+        cherche: r.music.artist + " — " + r.music.title,
+        trouve: r.url ? r.artistName + " — " + r.trackName : null,
+        erreur: r.error || null,
+      })),
+    };
+  }
+  const tot = Object.values(out).reduce((a, q) => a + q.total, 0);
+  const ok = Object.values(out).reduce((a, q) => a + q.ok, 0);
+  res.json({ resume: ok + "/" + tot + " extraits trouvés", quiz: out });
 });
 
 // URL publique + QR + PIN pour un quiz donné (utilisé par l'écran présentateur)
