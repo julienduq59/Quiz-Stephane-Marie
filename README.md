@@ -6,8 +6,12 @@ téléphone en scannant un QR code.
 
 La plateforme héberge **plusieurs quiz indépendants** (chacun avec sa propre salle,
 son code PIN et son QR) :
-- **Stéphane ♥ Marie ♥ Émilie** — la soirée double anniversaire
-- **Blind Test** 🎵 — reconnaître le titre ou l'artiste, musique lancée automatiquement
+- **Stéphane ♥ Marie ♥ Émilie** — la soirée double anniversaire (19 questions)
+- **Blind Test** 🎵 — variété française et internationale (15 titres)
+- **Blind Test 80** 🕺 — les tubes des années 80 (12 titres)
+- **Blind Test Ciné** 🎬 — deviner le film à sa musique (12 titres)
+- **Blind Test Disney** 🧸 — chansons de dessins animés (12 titres)
+- **Culture générale** 🧠 — 20 questions tous publics
 - **Clément ♥ Charlotte** — le quiz du mariage *(questions d'exemple à remplacer)*
 
 ### Pages
@@ -194,8 +198,12 @@ Pour forcer un morceau précis, dépose un fichier dans `public/audio/` et ajout
 music: { artist: "…", title: "…", audio: "/audio/ma-chanson.mp3" }
 ```
 
+Il existe quatre blind tests : `questions-blind.js` (variété), `questions-blind80.js`,
+`questions-blindfilm.js` et `questions-blinddisney.js`.
+
 > ✅ **À faire avant la soirée** : ouvre **`/api/blind-check`** pour vérifier que chaque
-> chanson trouve bien son extrait (la page liste les morceaux introuvables). Si un
+> chanson trouve bien son extrait — la page teste **tous** les blind tests et liste les
+> morceaux introuvables (`/api/blind-check?quiz=blind80` pour n'en tester qu'un). Si un
 > extrait manque, le présentateur affiche un avertissement et la question reste jouable.
 
 ### Ajouter un nouveau quiz
