@@ -17,6 +17,7 @@ const express = require("express");
 const { Server } = require("socket.io");
 const QRCode = require("qrcode");
 const { buildResults, writePdf } = require("./results");
+const { resolveTrack, prewarm } = require("./music");
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +41,13 @@ const QUIZ_DEFS = {
     subtitle: "Double anniversaire — Stéphane, Marie & Émilie",
     questions: require("./questions"),
   },
+  blind: {
+    id: "blind",
+    names: ["Blind Test"],
+    subtitle: "🎵 Reconnais le titre ou l'artiste",
+    questions: require("./questions-blind"),
+    isBlind: true,
+  },
   clement: {
     id: "clement",
     names: ["Clément", "Charlotte"],
@@ -54,6 +62,7 @@ function quizPublicList() {
     names: d.names,
     subtitle: d.subtitle,
     questionCount: d.questions.length,
+    isBlind: !!d.isBlind,
   }));
 }
 
@@ -123,6 +132,23 @@ app.get("/api/results.pdf", (req, res) => {
   writePdf(r, res);
 });
 
+// Vérification de la playlist du blind test : quels extraits sont trouvés ?
+app.get("/api/blind-check", async (req, res) => {
+  const def = QUIZ_DEFS.blind;
+  if (!def) return res.status(404).json({ error: "Pas de blind test." });
+  const rows = await prewarm(def.questions);
+  res.json({
+    total: rows.length,
+    ok: rows.filter((r) => r.url).length,
+    manquants: rows.filter((r) => !r.url).map((r) => r.music.artist + " — " + r.music.title),
+    detail: rows.map((r) => ({
+      cherche: r.music.artist + " — " + r.music.title,
+      trouve: r.url ? r.artistName + " — " + r.trackName : null,
+      erreur: r.error || null,
+    })),
+  });
+});
+
 // URL publique + QR + PIN pour un quiz donné (utilisé par l'écran présentateur)
 app.get("/api/connect-info", async (req, res) => {
   const quizId = String(req.query.quiz || "");
@@ -142,6 +168,7 @@ app.get("/api/connect-info", async (req, res) => {
       url, joinUrl, qr, pin: room.pin, quizId,
       names: def.names,
       subtitle: def.subtitle, questionCount: def.questions.length,
+      isBlind: !!def.isBlind,
     });
   } catch (err) {
     res.status(500).json({ error: "QR generation failed", url, joinUrl, pin: room.pin });
@@ -295,6 +322,10 @@ function startQuestion(room) {
     room.order = shuffle(questions.map((_, i) => i));
     room.history = [];
     room.startedAt = Date.now();
+    // Blind test : on récupère les extraits à l'avance pour éviter tout délai
+    if (QUIZ_DEFS[room.quizId].isBlind) {
+      prewarm(questions).catch(() => {});
+    }
   }
   if (room.currentIndex + 1 >= questions.length) {
     showPodium(room);
@@ -313,6 +344,23 @@ function startQuestion(room) {
   io.to(playersRoom(room)).emit("question", {
     index: q.index, total: q.total, text: q.text, options: q.options, time: q.time,
   });
+
+  // Blind test : l'extrait n'est envoyé qu'au présentateur (les téléphones restent muets)
+  const qDef = currentQuestion(room);
+  if (qDef && qDef.music) {
+    const askedIndex = room.currentIndex;
+    resolveTrack(qDef.music)
+      .then((t) => {
+        if (room.currentIndex !== askedIndex || room.state !== STATES.QUESTION) return;
+        io.to(hostRoom(room)).emit("music", {
+          index: askedIndex,
+          url: t.url || null,
+          error: t.error || null,
+          label: t.url ? t.artistName + " — " + t.trackName : null,
+        });
+      })
+      .catch(() => {});
+  }
 
   clearInterval(room.timer);
   clearTimeout(room.graceTimer);

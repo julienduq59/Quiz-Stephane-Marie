@@ -5,6 +5,7 @@
   // Quiz courant, déduit de l'URL : /quiz/<quizId>/host
   const quizId = location.pathname.split("/")[2] || "parents";
   let playerCount = 0; // joueurs connectés (pour « Réponses : n / total »)
+  let isBlind = false;  // vrai pour le quiz blind test (renseigné par /api/connect-info)
 
   /* ---------- Synthèse vocale (lecture des questions en français) ---------- */
   const TTS = "speechSynthesis" in window;
@@ -163,6 +164,7 @@
         }
         if (info.url) $("conn-url").textContent = info.url.replace(/^https?:\/\//, "");
         if (info.pin) setPin(info.pin);
+        if (typeof info.isBlind === "boolean") isBlind = info.isBlind;
         if (info.names && info.names.length) {
           $("hero-names").innerHTML = info.names.join(' <span class="heart">♥</span> ');
           document.title = info.names.join(" & ") + " — Présentateur";
@@ -231,6 +233,44 @@
   let qTotal = 0;
   let currentIndex = 0;
 
+
+  /* ---------- Blind test : lecture automatique de l'extrait ---------- */
+  const audio = $("player");
+
+  function musicStop() {
+    if (!audio) return;
+    try { audio.pause(); audio.removeAttribute("src"); audio.load(); } catch (e) {}
+    $("btn-music").classList.add("hidden");
+  }
+  function musicUi(txt, showBtn) {
+    $("music-state").textContent = txt;
+    $("btn-music").classList.toggle("hidden", !showBtn);
+  }
+  function musicPlay(url, label) {
+    if (!audio || !url) return;
+    audio.src = url;
+    audio.currentTime = 0;
+    audio.volume = 1;
+    const p = audio.play();
+    if (p && p.catch) {
+      p.then(() => musicUi("🎵 Écoute bien…", false))
+       .catch(() => {
+         // Le navigateur a bloqué la lecture automatique : bouton de secours
+         musicUi("🔇 Lecture bloquée par le navigateur", true);
+       });
+    }
+    audio._label = label || "";
+  }
+  $("btn-music").addEventListener("click", () => {
+    if (audio && audio.src) audio.play().then(() => musicUi("🎵 Écoute bien…", false)).catch(() => {});
+  });
+
+  socket.on("music", (d) => {
+    if (d.index !== currentIndex) return; // extrait d'une question précédente
+    if (d.url) musicPlay(d.url, d.label);
+    else musicUi("⚠️ Extrait indisponible — annonce la chanson toi-même", false);
+  });
+
   /* ---------- Leaderboard ---------- */
   function renderLeaderboard(container, board, limit) {
     container.innerHTML = "";
@@ -283,7 +323,14 @@
 
   socket.on("players", (d) => renderPlayers(d.players, d.count));
 
-  socket.on("question", (q) => { renderQuestion(q); speakQuestion(q); });
+  socket.on("question", (q) => {
+    renderQuestion(q);
+    musicStop();
+    $("music-bar").classList.toggle("hidden", !isBlind);
+    if (isBlind) musicUi("🎵 Chargement de l'extrait…", false);
+    // En blind test la voix se tairait par-dessus la musique
+    if (!isBlind) speakQuestion(q);
+  });
 
   socket.on("tick", (d) => { $("timer").textContent = d.timeLeft; });
 
@@ -293,6 +340,7 @@
 
   socket.on("reveal", (d) => {
     stopSpeaking();
+    musicStop();
     show("reveal");
     $("r-text").textContent = currentText + "  →  " + currentOptions[d.correct];
     renderQuestionTiles($("r-tiles"), currentOptions, { correct: d.correct, distribution: d.distribution });
@@ -306,6 +354,7 @@
 
   socket.on("podium", (d) => {
     stopSpeaking();
+    musicStop();
     show("podium");
     const rb = $("btn-results");
     if (rb) rb.href = "/api/results.pdf?quiz=" + encodeURIComponent(quizId);
@@ -318,6 +367,7 @@
 
   socket.on("reset", (d) => {
     stopSpeaking();
+    musicStop();
     setPin(d.pin);
     show("lobby");
     confetti.stop();
@@ -434,6 +484,7 @@
   // Salle réinitialisée : nouveau PIN + nouveau QR, retour au lobby vide
   socket.on("newRoom", (d) => {
     stopSpeaking();
+    musicStop();
     setPin(d.pin);
     refreshConnectInfo();
     show("lobby");
