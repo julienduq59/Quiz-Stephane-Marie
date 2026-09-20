@@ -75,6 +75,10 @@
       <div class="card center" style="text-align:center;">
         <h1 class="display" id="q-text" style="font-size:clamp(1.5rem,3.6vw,3rem);">…</h1>
       </div>
+      <div id="music-bar" class="card center hidden" style="gap:16px; text-align:center;">
+        <div id="music-state" class="display" style="font-size:1.4rem;">🎵 Écoute bien…</div>
+        <button id="btn-music" class="btn hidden" style="padding:10px 20px;">▶ Lancer la musique</button>
+      </div>
       <div class="tiles grow" id="q-tiles"></div>
       <div style="display:flex; justify-content:flex-end;">
         <button id="btn-reveal" class="btn secondary" style="font-size:0.8rem; padding:8px 16px; opacity:0.7;">Révéler la réponse ⏭</button>
@@ -124,6 +128,7 @@
     </div>
   </div>
 
+  <audio id="player" preload="auto"></audio>
   <canvas id="confetti"></canvas>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/confetti.js"></script>

@@ -7,6 +7,7 @@ téléphone en scannant un QR code.
 La plateforme héberge **plusieurs quiz indépendants** (chacun avec sa propre salle,
 son code PIN et son QR) :
 - **Stéphane ♥ Marie ♥ Émilie** — la soirée double anniversaire
+- **Blind Test** 🎵 — reconnaître le titre ou l'artiste, musique lancée automatiquement
 - **Clément ♥ Charlotte** — le quiz du mariage *(questions d'exemple à remplacer)*
 
 ### Pages
@@ -175,6 +176,27 @@ L'ordre des options détermine la couleur/forme de la tuile :
 > les réponses récurrentes (ex. « Stéphane » toujours à gauche, « Marie » à droite).
 > Tu peux mettre 2, 3 ou 4 options par question (une question à 2 options s'affiche
 > avec 2 tuiles, comme un vrai/faux).
+
+### 🎵 Blind test
+La playlist est dans **`questions-blind.js`**. Chaque entrée est une question normale,
+plus un bloc `music` qui sert à retrouver l'extrait :
+
+```js
+music: { artist: "Indochine", title: "L'Aventurier" }
+```
+
+Le serveur interroge le catalogue **iTunes** (gratuit, sans compte) et récupère un
+extrait de 30 s, joué **automatiquement sur l'écran présentateur uniquement** (les
+téléphones restent muets). La lecture vocale des questions est désactivée sur ce quiz.
+
+Pour forcer un morceau précis, dépose un fichier dans `public/audio/` et ajoute :
+```js
+music: { artist: "…", title: "…", audio: "/audio/ma-chanson.mp3" }
+```
+
+> ✅ **À faire avant la soirée** : ouvre **`/api/blind-check`** pour vérifier que chaque
+> chanson trouve bien son extrait (la page liste les morceaux introuvables). Si un
+> extrait manque, le présentateur affiche un avertissement et la question reste jouable.
 
 ### Ajouter un nouveau quiz
 Crée un fichier `questions-monquiz.js`, puis déclare-le dans `server.js` (objet
