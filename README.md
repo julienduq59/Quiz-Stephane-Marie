@@ -277,17 +277,39 @@ l'équipe la moins nombreuse. Le classement se fait à la **moyenne de points pa
 joueur**, pour qu'une grande table ne gagne pas d'office. Il apparaît à chaque
 révélation, au podium, sur les téléphones et dans le PDF.
 
+### 🏅 Trophées & mémoire des quiz
+Au podium, les **trophées de la partie** s'affichent sous les marches, calculés
+automatiquement d'après les réponses de chacun : 🏆 Numéro 1, 🎯 Sniper (meilleure
+précision), ⚡ Gâchette (bonnes réponses les plus rapides), 🔥 Série en or, 🚀 Remontada,
+🤔 Mûre réflexion, 💥 Tête brûlée, 👥 Équipe championne.
+
+Le bouton **« 📊 Analyse de la partie »** (podium) ou **« 📊 Mémoire »** (lobby) ouvre
+la mémoire des quiz :
+- **les 3 dernières parties** sont gardées sur l'ordinateur du présentateur ; épingle ⭐
+  une partie pour la **garder pour toujours** (elle ne compte pas dans les 3) — pratique
+  pour qu'une partie d'essai n'efface pas la vraie soirée ;
+- pour chaque partie : chiffres clés, trophées, **la course au podium** (place au
+  classement des 4 premiers après chaque question, avec le « film de la partie » :
+  changements de leader, moment clé, duel final), **la réussite question par question**
+  (la plus facile, la plus piégeuse, le piège, la question éclair, le casse-tête) et les
+  statistiques de chaque joueur (précision, temps moyen, meilleure série) ;
+- chaque graphique a son **tableau** (bouton « Voir en tableau ») et se parcourt au survol
+  ou au clavier (flèches) ;
+- **🏛️ Panthéon** (dès 2 parties) : records de points et de précision, joueurs les plus
+  titrés et habitués, reconnus à leur prénom d'une partie à l'autre.
+
+Les parties au-delà des 3 dernières non épinglées sont effacées à l'enregistrement de la
+partie suivante (un avertissement prévient dans la mémoire). Une partie où personne n'a
+répondu n'est pas gardée.
+
 ### 📄 Récapitulatif & export PDF
-À la fin de la partie, l'écran podium propose **« 📄 Télécharger les résultats (PDF) »** :
-classement complet, chiffres clés, faits marquants (réponse la plus rapide, question la
-plus piégeuse, sans-faute…) et le détail de chaque question avec son taux de réussite.
+À la fin de la partie, l'écran podium propose **« 📄 Résultats en PDF »** : chiffres clés,
+podium, équipes, trophées, film de la partie, faits marquants, classement complet (avec
+bonnes réponses et précision) et le détail de chaque question (taux de réussite, temps
+moyen, réponse piège). Le PDF de chaque partie en mémoire se retélécharge depuis la
+mémoire (bouton « 📄 PDF »).
 
-**Sauvegarde automatique** : chaque partie terminée est enregistrée sur l'ordinateur du
-présentateur (stockage du navigateur). Le bouton **« 📚 Historique des parties »** du
-lobby liste les parties passées (date, joueurs, vainqueur) et permet de **retélécharger
-le PDF** de n'importe laquelle, ou de la supprimer.
-
-> ℹ️ L'historique est propre à ce navigateur et à cet ordinateur. Le serveur, lui, ne
+> ℹ️ La mémoire est propre à ce navigateur et à cet ordinateur. Le serveur, lui, ne
 > garde rien de façon durable (offre gratuite Render) : pense donc à utiliser toujours
 > le même poste pour présenter, ou à télécharger le PDF après la partie.
 
