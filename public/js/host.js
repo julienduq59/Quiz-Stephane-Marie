@@ -149,6 +149,7 @@
     for (const k in screens) screens[k].classList.toggle("hidden", k !== name);
     const app = document.getElementById("app");
     if (app) app.dataset.screen = name;
+    Sfx.lobby(name === "lobby"); // musique d'attente uniquement au lobby
   }
 
   // Met à jour le code affiché partout (lobby + badge permanent en haut à gauche)
@@ -318,6 +319,26 @@
   }
 
   /* ---------- Socket events ---------- */
+  /* ---------- Effets sonores ---------- */
+  let sfxOn = true;
+  try { sfxOn = localStorage.getItem("quiz_sfx") !== "off"; } catch (e) {}
+  Sfx.setEnabled(sfxOn);
+  function updateSfxButton() {
+    const b = $("btn-sfx");
+    b.textContent = sfxOn ? "🔔 Sons" : "🔕 Sons";
+    b.style.opacity = sfxOn ? "1" : "0.55";
+  }
+  updateSfxButton();
+  $("btn-sfx").addEventListener("click", () => {
+    sfxOn = !sfxOn;
+    try { localStorage.setItem("quiz_sfx", sfxOn ? "on" : "off"); } catch (e) {}
+    Sfx.setEnabled(sfxOn);
+    updateSfxButton();
+  });
+  // Les navigateurs n'autorisent le son qu'après un geste : premier clic/touche = déblocage
+  ["pointerdown", "keydown", "touchstart"].forEach((ev) =>
+    document.addEventListener(ev, () => Sfx.unlock(), { passive: true }));
+
   /* ---------- Code présentateur ---------- */
   const CODE_KEY = "quiz_host_code";
   let hostCode = "";
@@ -373,7 +394,11 @@
     if (!isBlind) speakQuestion(q);
   });
 
-  socket.on("tick", (d) => { $("timer").textContent = d.timeLeft; });
+  socket.on("tick", (d) => {
+    $("timer").textContent = d.timeLeft;
+    const onQuestion = document.getElementById("app").dataset.screen === "question";
+    if (onQuestion && !isBlind && d.timeLeft >= 1 && d.timeLeft <= 5) Sfx.tick(d.timeLeft);
+  });
 
   socket.on("answerCount", (d) => {
     $("answer-count").textContent = d.answerCount + " / " + (d.total != null ? d.total : playerCount);
@@ -381,6 +406,7 @@
 
   socket.on("reveal", (d) => {
     stopSpeaking();
+    Sfx.reveal();
     musicStop();
     show("reveal");
     $("r-text").textContent = currentText + "  →  " + currentOptions[d.correct];
@@ -395,6 +421,7 @@
 
   socket.on("podium", (d) => {
     stopSpeaking();
+    Sfx.fanfare();
     musicStop();
     show("podium");
     const rb = $("btn-results");

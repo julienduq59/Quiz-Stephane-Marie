@@ -75,6 +75,10 @@
     t._to = setTimeout(() => { t.style.display = "none"; }, 4500);
   }
 
+  // Son : débloqué au premier toucher (exigence des navigateurs mobiles)
+  ["pointerdown", "touchstart", "keydown"].forEach((ev) =>
+    document.addEventListener(ev, () => window.Sfx && Sfx.unlock(), { passive: true }));
+
   /* ---------- State / persistence ---------- */
   const store = {
     get id() { return localStorage.getItem("quiz_player_id"); },
@@ -267,10 +271,12 @@
       $("result-title").textContent = "⏱ Trop tard !";
       card.style.background = "rgba(255,255,255,0.06)";
     } else if (d.correct) {
+      Sfx.correct();
       $("result-title").textContent = "✅ Bonne réponse !";
       card.style.background = "rgba(38,137,12,0.35)";
       confetti.burst(80);
     } else {
+      Sfx.wrong();
       $("result-title").textContent = "❌ Mauvaise réponse";
       card.style.background = "rgba(232,68,59,0.3)";
     }
