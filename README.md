@@ -21,7 +21,7 @@ son code PIN et son QR) :
 - 📱 **Joueurs** (`/quiz/<id>`) : on saisit son prénom, on touche une des 4 tuiles
   colorées, on voit la bonne réponse, son score et son classement.
 
-*(les identifiants `<id>` sont `parents` et `clement`)*
+*(identifiants `<id>` : `parents`, `blind`, `blind80`, `blindfilm`, `blinddisney`, `culture`, `clement`)*
 
 - ⚡ Temps réel via **Socket.IO**, pensé pour **50+ joueurs simultanés** par quiz.
 - 🇫🇷 Interface entièrement en français.
@@ -157,6 +157,21 @@ Idéal si tu veux une URL stable préparée à l'avance.
 
 ## ✏️ Modifier les questions
 
+### Depuis le navigateur (le plus simple)
+Dans le lobby, le bouton **« ✏️ Questions »** ouvre l'éditeur : énoncé, 2 à 4
+réponses, bonne réponse cochée, durée (et artiste/titre pour un blind test).
+Ajout, suppression, réordonnancement, puis **« 💾 Enregistrer »**.
+
+- Les questions modifiées sont **enregistrées sur l'ordinateur du présentateur** et
+  envoyées au serveur. Le disque de Render étant effacé à chaque redémarrage, la page
+  présentateur les **renvoie automatiquement** à chaque connexion : présente donc
+  toujours depuis le même ordinateur, avec le même navigateur.
+- Pour changer d'ordinateur : **⬇ Exporter** puis **⬆ Importer** le fichier JSON.
+- **↺ Questions d'origine** revient aux questions du dépôt.
+- Une modification faite pendant une partie s'applique à la **partie suivante**.
+- Le bouton affiche `✱` quand des questions personnalisées sont actives.
+
+### Dans le code
 Chaque quiz a son propre fichier de questions, facile à éditer :
 - **`questions.js`** → quiz **Stéphane & Marie** (`parents`)
 - **`questions-clement.js`** → quiz **Clément & Charlotte** (`clement`) *(exemples à remplacer)*
@@ -223,6 +238,19 @@ automatiquement sur la page d'accueil.
 
 ## 🎛️ Contrôles présentateur
 
+### 🔒 Code présentateur
+L'écran présentateur demande un **code**, une seule fois par appareil. Sans lui,
+impossible de piloter la partie — et le serveur vérifie que chaque commande
+(démarrer, révéler, exclure…) vient bien du présentateur : un invité ne peut rien
+déclencher depuis son téléphone. Après 8 codes faux en 10 minutes depuis une même
+adresse, les essais sont bloqués 10 minutes ; le présentateur déjà connecté n'est
+jamais concerné.
+
+> ⚠️ Le dépôt GitHub est **public** : le code par défaut (`mirabelle`) y est visible.
+> Pour un vrai secret, définis la variable **`HOST_CODE`** dans Render
+> (service → *Environment* → *Add Environment Variable*).
+
+### Pendant la partie
 - **Démarrer le quiz** depuis le lobby.
 - **Révéler la réponse** (petit bouton en bas à droite) pour passer plus tôt.
   Sinon la question tourne **toujours jusqu'au bout du compte à rebours (40 s)**,
@@ -233,9 +261,21 @@ automatiquement sur la page d'accueil.
   question et de ses réponses en français, à l'affichage de la question (synthèse
   vocale du navigateur). Activée par défaut, coupable d'un clic. La voix sort sur
   l'écran présentateur — pense à monter le son du vidéoprojecteur / des enceintes.
+- **🔔 Sons** (en haut à droite) : ambiance sonore générée par le navigateur —
+  musique d'attente au lobby, tic-tac des 5 dernières secondes (pas en blind test),
+  jingle de révélation, fanfare au podium ; ding / buzz sur les téléphones. Un clic
+  coupe tout (choix mémorisé). Le son démarre au premier clic sur la page.
 - **Exclure tout le monde & nouveau code** depuis le lobby (vide la salle et génère
   un nouveau code PIN + QR — pratique après les tests).
 - **Recommencer une partie** depuis le podium (remet tous les scores à zéro).
+
+### 👥 Mode équipes
+Bouton **« 👥 Équipes »** dans le lobby : 2 à 6 équipes de couleur, renommables.
+Chaque invité choisit son équipe sur son téléphone (effectifs affichés en direct) ;
+ceux qui n'ont pas choisi — et les retardataires — sont placés automatiquement dans
+l'équipe la moins nombreuse. Le classement se fait à la **moyenne de points par
+joueur**, pour qu'une grande table ne gagne pas d'office. Il apparaît à chaque
+révélation, au podium, sur les téléphones et dans le PDF.
 
 ### 📄 Récapitulatif & export PDF
 À la fin de la partie, l'écran podium propose **« 📄 Télécharger les résultats (PDF) »** :
@@ -269,6 +309,7 @@ Un joueur qui ferme le site par erreur peut **rejoindre en cours de partie** :
 |--------------|------------------------------------------------------------|--------|
 | `PORT`       | Port d'écoute du serveur                                    | `3000` |
 | `PUBLIC_URL` | Force l'URL publique encodée dans le QR code               | (auto) |
+| `HOST_CODE`  | Code présentateur (insensible à la casse)                   | `mirabelle` |
 
 ---
 
