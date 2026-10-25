@@ -5,6 +5,12 @@
   // Quiz courant, déduit de l'URL : /quiz/<quizId>
   const quizId = location.pathname.split("/")[2] || "parents";
 
+  // Échappe le texte avant de l'insérer en HTML (prénoms, réponses…) : empêche
+  // toute injection de script par un joueur malveillant.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
   // Personnalise le hero (prénoms fêtés) dès le chargement
   function joinNatural(names) {
     if (names.length <= 1) return names[0] || "";
@@ -13,7 +19,7 @@
   function setNames(names) {
     if (!names || !names.length) return;
     const h = document.getElementById("hero-names");
-    if (h) h.innerHTML = names.join(' <span class="heart">♥</span> ');
+    if (h) h.innerHTML = names.map(esc).join(' <span class="heart">♥</span> ');
     const th = document.getElementById("thanks");
     if (th) th.textContent = `Merci d'avoir joué pour ${joinNatural(names)} ♥`;
     document.title = names.join(" & ") + " — Quiz";
@@ -69,6 +75,10 @@
     t._to = setTimeout(() => { t.style.display = "none"; }, 4500);
   }
 
+  // Son : débloqué au premier toucher (exigence des navigateurs mobiles)
+  ["pointerdown", "touchstart", "keydown"].forEach((ev) =>
+    document.addEventListener(ev, () => window.Sfx && Sfx.unlock(), { passive: true }));
+
   /* ---------- State / persistence ---------- */
   const store = {
     get id() { return localStorage.getItem("quiz_player_id"); },
@@ -81,6 +91,7 @@
   let joined = false; // passe à true seulement après validation manuelle du prénom
   let currentOptions = []; // options de la question en cours (pour la révélation)
   let pendingChoice = null; // réponse tapée, en attente de confirmation du serveur
+  let teamMode = false, teams = [], myTeam = null; // mode équipes
 
   // Pré-remplir l'URL ?pin=XXXXXX (depuis le QR code)
   const urlPin = new URLSearchParams(location.search).get("pin");
@@ -103,6 +114,8 @@
       joined = true;
       store.id = res.playerId;
       store.name = res.name;
+      teamMode = !!res.teamMode; teams = res.teams || []; myTeam = res.teamId || null;
+      renderTeamPicker();
       myScore = res.score || 0;
       setNames(res.names);
       $("wait-name").textContent = res.name;
@@ -127,6 +140,8 @@
         if (res && res.ok) {
           myScore = res.score || 0;
           store.id = res.playerId;
+          teamMode = !!res.teamMode; teams = res.teams || []; myTeam = res.teamId || null;
+          renderTeamPicker();
           $("wait-name").textContent = res.name;
           $("wait-score").textContent = myScore;
           if (res.state === "lobby") show("wait");
@@ -134,6 +149,46 @@
         }
       });
     }
+  });
+
+
+  /* ---------- Mode équipes ---------- */
+  function renderTeamPicker() {
+    const box = $("team-picker");
+    box.classList.toggle("hidden", !teamMode || !teams.length);
+    const el = $("team-buttons");
+    el.innerHTML = "";
+    teams.forEach((tm) => {
+      const b = document.createElement("button");
+      const mine = tm.id === myTeam;
+      b.className = "btn";
+      b.style.cssText = "background:" + tm.color + "; color:#fff; box-shadow:none; display:flex; justify-content:space-between;" +
+        "align-items:center; padding:14px 18px; font-size:1rem;" +
+        (mine ? " outline:4px solid #ffd166; outline-offset:2px;" : (myTeam ? " opacity:0.55;" : ""));
+      b.innerHTML = "<span>" + (mine ? "✓ " : "") + esc(tm.name) + "</span>" +
+        "<span style=\"font-size:0.85rem; opacity:0.9;\">" + (Number(tm.count) || 0) + " 👤</span>";
+      b.addEventListener("click", () => {
+        socket.emit("player:setTeam", { teamId: tm.id }, (r) => {
+          if (r && r.ok) { myTeam = r.teamId; renderTeamPicker(); }
+          else if (r && r.error) toast(r.error);
+        });
+      });
+      el.appendChild(b);
+    });
+  }
+  function teamLine(el, info) {
+    const box = $(el);
+    if (!info) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    box.style.boxShadow = "inset 6px 0 0 " + info.color;
+    box.textContent = "👥 " + info.name + " — " + info.rank + (info.rank === 1 ? "re" : "e") + " sur " + info.total;
+  }
+  socket.on("teams", (d) => {
+    teamMode = !!d.enabled;
+    teams = d.teams || [];
+    // Mode désactivé ou équipe supprimée par le présentateur : on n'a plus d'équipe
+    if (!teamMode || !teams.some((x) => x.id === myTeam)) myTeam = null;
+    renderTeamPicker();
   });
 
   /* ---------- Question ---------- */
@@ -145,7 +200,7 @@
       const div = document.createElement("button");
       div.className = `tile ${t.cls}`;
       div.dataset.index = i;
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>`;
       div.addEventListener("click", () => answer(i));
       el.appendChild(div);
     });
@@ -261,10 +316,12 @@
       $("result-title").textContent = "⏱ Trop tard !";
       card.style.background = "rgba(255,255,255,0.06)";
     } else if (d.correct) {
+      Sfx.correct();
       $("result-title").textContent = "✅ Bonne réponse !";
       card.style.background = "rgba(38,137,12,0.35)";
       confetti.burst(80);
     } else {
+      Sfx.wrong();
       $("result-title").textContent = "❌ Mauvaise réponse";
       card.style.background = "rgba(232,68,59,0.3)";
     }
@@ -272,6 +329,7 @@
     $("result-points").textContent = d.points > 0 ? `+${d.points} points` : "+0 point";
     $("result-score").textContent = d.score;
     $("result-rank").textContent = `${d.rank} / ${d.totalPlayers}`;
+    teamLine("result-team", d.team);
   });
 
   // Affiche les 4 réponses sur le téléphone : bonne réponse surlignée,
@@ -289,7 +347,7 @@
       if (i === yourChoice) div.classList.add("chosen");
       div.style.minHeight = "52px";
       div.style.fontSize = "1rem";
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>`;
       el.appendChild(div);
     });
   }
@@ -300,6 +358,7 @@
     const ord = d.rank === 1 ? "1er" : `${d.rank}ᵉ`;
     $("final-rank").textContent = `Tu finis ${ord} sur ${d.totalPlayers} !`;
     $("final-score").textContent = d.score;
+    teamLine("final-team", d.team);
     if (d.rank <= 3) confetti.shower(3000);
   });
 

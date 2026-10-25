@@ -31,7 +31,10 @@
       <div style="font-size:0.9rem;">Code : <span id="pin-badge-code" class="gold" style="letter-spacing:0.18em;">······</span></div>
     </div>
     <div style="position:fixed; top:14px; right:14px; z-index:60; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-      <button id="btn-tts" class="btn secondary" style="font-size:0.85rem; padding:8px 14px;">🔊 Voix</button>
+      <div style="display:flex; gap:6px;">
+        <button id="btn-sfx" class="btn secondary" style="font-size:0.85rem; padding:8px 14px;">🔔 Sons</button>
+        <button id="btn-tts" class="btn secondary" style="font-size:0.85rem; padding:8px 14px;">🔊 Voix</button>
+      </div>
       <select id="voice-select" title="Choisir la voix" style="display:none; font-family:'Inter'; font-size:0.72rem; max-width:200px; padding:5px 7px; border-radius:8px; border:1px solid rgba(255,255,255,0.22); background:rgba(20,10,40,0.9); color:#fff;"></select>
     </div>
     <header class="hero">
@@ -59,7 +62,12 @@
           <div class="grow"></div>
           <button id="btn-start" class="btn big" disabled>Démarrer le quiz ▶</button>
           <button id="btn-new-room" class="btn secondary">Exclure tout le monde &amp; nouveau code ↻</button>
-          <button id="btn-history" class="btn secondary">📚 Historique des parties</button>
+          <div id="teams-summary" class="hidden" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="btn-teams" class="btn secondary" style="flex:1;">👥 Équipes : non</button>
+            <button id="btn-editor" class="btn secondary" style="flex:1;">✏️ Questions</button>
+            <button id="btn-history" class="btn secondary" style="flex:1;">📚 Historique</button>
+          </div>
           <div class="muted center" id="lobby-hint" style="font-size:0.9rem;">En attente d'au moins 1 joueur…</div>
         </div>
       </div>
@@ -92,6 +100,10 @@
       </div>
       <div class="card center"><h1 class="display" id="r-text" style="font-size:clamp(1.4rem,3vw,2.4rem); text-align:center;">…</h1></div>
       <div class="tiles" id="r-tiles"></div>
+      <div id="r-teams-card" class="card col hidden" style="gap:10px;">
+        <h2 class="display">👥 Équipes <span class="muted" style="font-size:0.8rem; font-family:Inter;">(moyenne par joueur)</span></h2>
+        <div id="r-teams" class="col" style="gap:8px;"></div>
+      </div>
       <div class="card col" style="gap:10px;">
         <h2 class="display">Classement</h2>
         <div id="r-leaderboard" class="col" style="gap:8px;"></div>
@@ -105,6 +117,10 @@
     <section id="screen-podium" class="grow hidden col" style="gap:20px;">
       <h1 class="display center" style="font-size:clamp(2rem,5vw,3.5rem); color:var(--gold);">🏆 Podium 🏆</h1>
       <div id="podium" style="display:flex; align-items:flex-end; justify-content:center; gap:18px; min-height:38vh;"></div>
+      <div id="p-teams-card" class="card col hidden" style="gap:10px;">
+        <h2 class="display">👥 Classement des équipes</h2>
+        <div id="p-teams" class="col" style="gap:8px;"></div>
+      </div>
       <div class="card col" style="gap:8px; max-height:30vh; overflow:auto;">
         <h2 class="display">Classement complet</h2>
         <div id="full-leaderboard" class="col" style="gap:8px;"></div>
@@ -114,6 +130,70 @@
         <button id="btn-restart" class="btn rose big">Recommencer une partie ↻</button>
       </div>
     </section>
+  </div>
+
+  <!-- CODE PRÉSENTATEUR -->
+  <div id="code-modal" class="hidden" style="position:fixed; inset:0; z-index:95; background:rgba(10,4,24,0.94); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="card col" style="gap:14px; width:min(420px,100%); text-align:center;">
+      <h2 class="display">🔒 Espace présentateur</h2>
+      <div class="muted">Saisis le code présentateur pour piloter le quiz.<br>Il ne sera demandé qu'une fois sur cet appareil.</div>
+      <input id="code-input" type="password" autocomplete="current-password" placeholder="Code présentateur"
+        style="padding:16px; border-radius:14px; border:none; font-size:1.15rem; text-align:center; font-family:'Inter';" />
+      <button id="code-ok" class="btn big">Entrer</button>
+      <div id="code-error" class="rose-text" style="min-height:20px; font-weight:600;"></div>
+      <a href="/" class="muted" style="font-size:0.85rem;">← Retour à l'accueil</a>
+    </div>
+  </div>
+
+  <!-- ÉDITEUR DE QUESTIONS -->
+  <div id="editor-modal" class="hidden" style="position:fixed; inset:0; z-index:92; background:rgba(10,4,24,0.95); overflow:auto; padding:18px;">
+    <div class="col" style="max-width:980px; margin:0 auto;">
+      <div class="card col" style="gap:10px; position:sticky; top:0; z-index:2; background:rgba(40,16,72,0.97);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h2 class="display">✏️ Questions <span id="ed-count" class="muted" style="font-size:0.9rem;"></span></h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="ed-add" class="btn secondary">＋ Ajouter</button>
+            <button id="ed-save" class="btn">💾 Enregistrer</button>
+            <button id="ed-close" class="btn secondary">Fermer ✕</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="ed-export" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">⬇ Exporter</button>
+          <button id="ed-import" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">⬆ Importer</button>
+          <button id="ed-reset" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">↺ Questions d'origine</button>
+          <input id="ed-file" type="file" accept=".json,application/json" class="hidden" />
+        </div>
+        <div id="ed-status" class="muted" style="font-size:0.85rem; min-height:1.2em;"></div>
+      </div>
+      <div id="ed-list" class="col" style="gap:14px; margin-top:14px; padding-bottom:40px;"></div>
+    </div>
+  </div>
+
+  <!-- CONFIGURATION DES ÉQUIPES -->
+  <div id="teams-modal" class="hidden" style="position:fixed; inset:0; z-index:90; background:rgba(10,4,24,0.82); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="card col" style="gap:14px; width:min(560px,100%); max-height:90vh; overflow:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="display">👥 Mode équipes</h2>
+        <button id="btn-teams-close" class="btn secondary" style="padding:8px 16px; font-size:0.85rem;">Fermer ✕</button>
+      </div>
+      <label style="display:flex; gap:12px; align-items:center; font-weight:700; cursor:pointer;">
+        <input type="checkbox" id="teams-enabled" style="width:22px; height:22px; accent-color:#ffd166;"> Jouer en équipes
+      </label>
+      <div id="teams-config" class="col" style="gap:14px;">
+        <div>
+          <div class="muted" style="font-size:0.85rem; margin-bottom:8px;">Nombre d'équipes</div>
+          <div id="teams-count" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+        <div id="teams-names" class="col" style="gap:8px;"></div>
+        <div class="muted" style="font-size:0.8rem; line-height:1.45;">
+          Classement à la <b>moyenne par joueur</b> : une grande table ne gagne pas d'office.
+          Chacun choisit son équipe sur son téléphone ; ceux qui n'ont pas choisi sont
+          répartis automatiquement au lancement.
+        </div>
+      </div>
+      <button id="btn-teams-save" class="btn big">Valider</button>
+      <div id="teams-error" class="rose-text" style="min-height:18px; font-weight:600;"></div>
+    </div>
   </div>
 
   <!-- HISTORIQUE DES PARTIES -->
@@ -132,6 +212,8 @@
   <canvas id="confetti"></canvas>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/confetti.js"></script>
+  <script src="/js/sfx.js"></script>
+  <script src="/js/editor.js"></script>
   <script src="/js/host.js"></script>
 </body>
 </html>

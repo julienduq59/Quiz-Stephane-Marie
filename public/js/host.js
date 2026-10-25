@@ -6,6 +6,13 @@
   const quizId = location.pathname.split("/")[2] || "parents";
   let playerCount = 0; // joueurs connectés (pour « Réponses : n / total »)
   let isBlind = false;  // vrai pour le quiz blind test (renseigné par /api/connect-info)
+  let teamMode = false, teams = []; // mode équipes (config reçue du serveur)
+  let lastPlayers = [];              // dernière liste de joueurs (pour la recolorer)
+  const TEAM_PRESETS = [
+    { name: "Équipe Rouge", color: "#e8443b" }, { name: "Équipe Bleue", color: "#1368ce" },
+    { name: "Équipe Jaune", color: "#d89e00" }, { name: "Équipe Verte", color: "#26890c" },
+    { name: "Équipe Violette", color: "#8e44ad" }, { name: "Équipe Orange", color: "#e67e22" },
+  ];
 
   /* ---------- Synthèse vocale (lecture des questions en français) ---------- */
   const TTS = "speechSynthesis" in window;
@@ -132,6 +139,12 @@
     return "";
   }
 
+  // Échappe le texte avant de l'insérer en HTML (prénoms, réponses…) : empêche
+  // toute injection de script par un joueur malveillant.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
   const $ = (id) => document.getElementById(id);
   const screens = {
     lobby: $("screen-lobby"),
@@ -143,6 +156,7 @@
     for (const k in screens) screens[k].classList.toggle("hidden", k !== name);
     const app = document.getElementById("app");
     if (app) app.dataset.screen = name;
+    Sfx.lobby(name === "lobby"); // musique d'attente uniquement au lobby
   }
 
   // Met à jour le code affiché partout (lobby + badge permanent en haut à gauche)
@@ -166,7 +180,7 @@
         if (info.pin) setPin(info.pin);
         if (typeof info.isBlind === "boolean") isBlind = info.isBlind;
         if (info.names && info.names.length) {
-          $("hero-names").innerHTML = info.names.join(' <span class="heart">♥</span> ');
+          $("hero-names").innerHTML = info.names.map(esc).join(' <span class="heart">♥</span> ');
           document.title = info.names.join(" & ") + " — Présentateur";
         }
       })
@@ -177,6 +191,7 @@
   /* ---------- Player list ---------- */
   function renderPlayers(players, count) {
     playerCount = count;
+    lastPlayers = players;
     $("player-count").textContent = count;
     const el = $("player-list");
     el.innerHTML = "";
@@ -184,6 +199,11 @@
       const chip = document.createElement("div");
       chip.className = "pill";
       chip.textContent = p.name;
+      const team = teamMode && teams.find((x) => x.id === p.teamId);
+      if (team) {
+        chip.style.borderColor = team.color;
+        chip.style.boxShadow = "inset 4px 0 0 " + team.color;
+      }
       el.appendChild(chip);
     });
     const canStart = count > 0;
@@ -204,7 +224,7 @@
       div.dataset.index = i;
       let countHtml = "";
       if (opts.distribution) countHtml = `<span class="count">${opts.distribution[i]}</span>`;
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>${countHtml}`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>${countHtml}`;
       if (opts.correct !== undefined) {
         if (i === opts.correct) div.classList.add("correct");
         else div.classList.add("dim");
@@ -280,7 +300,7 @@
       row.style.justifyContent = "space-between";
       row.style.width = "100%";
       const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
-      row.innerHTML = `<span>${medal} ${p.name}</span><span class="display gold">${p.score}</span>`;
+      row.innerHTML = `<span>${medal} ${esc(p.name)}</span><span class="display gold">${Number(p.score) || 0}</span>`;
       container.appendChild(row);
     });
   }
@@ -300,8 +320,8 @@
       col.style.gap = "10px";
       col.innerHTML = `
         <div class="display" style="font-size:1.3rem;">${["🥇","🥈","🥉"][rankIdx]}</div>
-        <div class="display" style="font-size:1.2rem;">${p.name}</div>
-        <div class="display gold" style="font-size:1.4rem;">${p.score}</div>
+        <div class="display" style="font-size:1.2rem;">${esc(p.name)}</div>
+        <div class="display gold" style="font-size:1.4rem;">${Number(p.score) || 0}</div>
         <div style="width:min(20vw,160px); height:${heights[rankIdx]}; border-radius:14px 14px 0 0;
           background:linear-gradient(180deg, ${colors[rankIdx]}, rgba(255,255,255,0.08));
           box-shadow:var(--shadow); display:flex; align-items:flex-start; justify-content:center;
@@ -312,9 +332,67 @@
   }
 
   /* ---------- Socket events ---------- */
-  socket.on("connect", () => socket.emit("host:join", { quizId }));
+  /* ---------- Effets sonores ---------- */
+  let sfxOn = true;
+  try { sfxOn = localStorage.getItem("quiz_sfx") !== "off"; } catch (e) {}
+  Sfx.setEnabled(sfxOn);
+  function updateSfxButton() {
+    const b = $("btn-sfx");
+    b.textContent = sfxOn ? "🔔 Sons" : "🔕 Sons";
+    b.style.opacity = sfxOn ? "1" : "0.55";
+  }
+  updateSfxButton();
+  $("btn-sfx").addEventListener("click", () => {
+    sfxOn = !sfxOn;
+    try { localStorage.setItem("quiz_sfx", sfxOn ? "on" : "off"); } catch (e) {}
+    Sfx.setEnabled(sfxOn);
+    updateSfxButton();
+  });
+  // Les navigateurs n'autorisent le son qu'après un geste : premier clic/touche = déblocage
+  ["pointerdown", "keydown", "touchstart"].forEach((ev) =>
+    document.addEventListener(ev, () => Sfx.unlock(), { passive: true }));
+
+  /* ---------- Code présentateur ---------- */
+  const CODE_KEY = "quiz_host_code";
+  let hostCode = "";
+  try { hostCode = localStorage.getItem(CODE_KEY) || ""; } catch (e) {}
+  const TOKEN_KEY = "quiz_host_token";
+  let hostToken = "";
+  try { hostToken = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+  let isHost = false;
+  function joinAsHost() { socket.emit("host:join", { quizId, code: hostCode, token: hostToken }); }
+  socket.on("host:token", (d) => {
+    hostToken = (d && d.token) || "";
+    try { localStorage.setItem(TOKEN_KEY, hostToken); } catch (e) {}
+  });
+  function submitCode() {
+    const v = $("code-input").value.trim();
+    if (!v) { $("code-error").textContent = "Entre le code."; return; }
+    hostCode = v;
+    $("code-error").textContent = "";
+    joinAsHost();
+  }
+  $("code-ok").addEventListener("click", submitCode);
+  $("code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submitCode(); });
+  socket.on("host:denied", (d) => {
+    isHost = false;
+    hostToken = "";
+    // On n'oublie le code que s'il est faux (pas en cas de blocage temporaire)
+    try { localStorage.removeItem(TOKEN_KEY); if (d && /incorrect/.test(d.reason || "")) localStorage.removeItem(CODE_KEY); } catch (e) {}
+    $("code-modal").classList.remove("hidden");
+    $("code-error").textContent = (d && d.reason) || "";
+    $("code-input").value = "";
+    setTimeout(() => $("code-input").focus(), 50);
+  });
+  socket.on("connect", joinAsHost);
 
   socket.on("host:state", (s) => {
+    isHost = true;
+    try { localStorage.setItem(CODE_KEY, hostCode); } catch (e) {}
+    $("code-modal").classList.add("hidden");
+    applyTeams(s.teamMode, s.teams);
+    if (s.questionCount != null) setQuestionsLabel(s.questionCount, s.customQuestions);
+    editor.pushLocal(); // renvoie les questions modifiées sur cet appareil (serveur redémarré…)
     setPin(s.pin);
     renderPlayers(s.players, s.count);
     if (s.state === "question" && s.question) renderQuestion(s.question);
@@ -332,7 +410,11 @@
     if (!isBlind) speakQuestion(q);
   });
 
-  socket.on("tick", (d) => { $("timer").textContent = d.timeLeft; });
+  socket.on("tick", (d) => {
+    $("timer").textContent = d.timeLeft;
+    const onQuestion = document.getElementById("app").dataset.screen === "question";
+    if (onQuestion && !isBlind && d.timeLeft >= 1 && d.timeLeft <= 5) Sfx.tick(d.timeLeft);
+  });
 
   socket.on("answerCount", (d) => {
     $("answer-count").textContent = d.answerCount + " / " + (d.total != null ? d.total : playerCount);
@@ -340,11 +422,13 @@
 
   socket.on("reveal", (d) => {
     stopSpeaking();
+    Sfx.reveal();
     musicStop();
     show("reveal");
     $("r-text").textContent = currentText + "  →  " + currentOptions[d.correct];
     renderQuestionTiles($("r-tiles"), currentOptions, { correct: d.correct, distribution: d.distribution });
     renderLeaderboard($("r-leaderboard"), d.leaderboard, 8);
+    renderTeamBoard("r-teams-card", "r-teams", d.teams);
     const isLast = d.index + 1 >= qTotal;
     const label = isLast ? "Voir le podium 🏆" : "Question suivante ▶";
     $("btn-next").textContent = label;
@@ -354,6 +438,7 @@
 
   socket.on("podium", (d) => {
     stopSpeaking();
+    Sfx.fanfare();
     musicStop();
     show("podium");
     const rb = $("btn-results");
@@ -361,6 +446,7 @@
     histRecord(); // sauvegarde automatique de la partie terminée
     renderPodium(d.podium);
     renderLeaderboard($("full-leaderboard"), d.leaderboard);
+    renderTeamBoard("p-teams-card", "p-teams", d.teams);
     confetti.shower(4000);
     setTimeout(() => confetti.burst(160), 300);
   });
@@ -413,11 +499,11 @@
       row.style.cssText = "width:100%; justify-content:space-between; gap:12px; flex-wrap:wrap;";
       const quand = d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) +
         " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      const gagnant = g.top && g.top[0] ? g.top[0].name + " (" + g.top[0].score + " pts)" : "—";
+      const gagnant = g.top && g.top[0] ? esc(g.top[0].name) + " (" + (Number(g.top[0].score) || 0) + " pts)" : "—";
       row.innerHTML =
         '<div style="text-align:left;"><div class="display" style="font-size:0.95rem;">' + quand + '</div>' +
-        '<div class="muted" style="font-size:0.82rem;">' + (g.names || []).join(" & ") + " · " +
-        g.nbPlayers + " joueurs · " + g.nbQuestions + " questions · 🥇 " + gagnant + '</div></div>';
+        '<div class="muted" style="font-size:0.82rem;">' + (g.names || []).map(esc).join(" & ") + " · " +
+        (Number(g.nbPlayers) || 0) + " joueurs · " + (Number(g.nbQuestions) || 0) + " questions · 🥇 " + gagnant + '</div></div>';
       const btns = document.createElement("div");
       btns.style.cssText = "display:flex; gap:8px;";
       const dl = document.createElement("button");
@@ -461,6 +547,108 @@
   $("history-modal").addEventListener("click", (e) => {
     if (e.target === $("history-modal")) $("history-modal").classList.add("hidden");
   });
+
+
+  /* ---------- Mode équipes ---------- */
+  function applyTeams(enabled, list) {
+    teamMode = !!enabled;
+    teams = list || [];
+    $("btn-teams").textContent = teamMode ? "👥 Équipes : " + teams.length : "👥 Équipes : non";
+    const sum = $("teams-summary");
+    sum.innerHTML = "";
+    sum.classList.toggle("hidden", !teamMode);
+    teams.forEach((tm) => {
+      const chip = document.createElement("span");
+      chip.className = "pill";
+      chip.style.cssText = "font-size:0.85rem; border-color:" + tm.color + "; box-shadow: inset 4px 0 0 " + tm.color + ";";
+      chip.textContent = tm.name + " · " + (tm.count || 0);
+      sum.appendChild(chip);
+    });
+    renderPlayers(lastPlayers, lastPlayers.length);
+  }
+  socket.on("teams", (d) => applyTeams(d.enabled, d.teams));
+
+  // Classement des équipes (révélation et podium)
+  function renderTeamBoard(card, container, board) {
+    const list = board || [];
+    $(card).classList.toggle("hidden", !list.length);
+    const el = $(container);
+    el.innerHTML = "";
+    list.forEach((tm, i) => {
+      const row = document.createElement("div");
+      row.className = "pill";
+      row.style.cssText = "width:100%; justify-content:space-between; box-shadow: inset 6px 0 0 " + tm.color + ";" +
+        (i === 0 ? " border-color:" + tm.color + ";" : "");
+      const medal = ["🥇", "🥈", "🥉"][i] || (i + 1) + ".";
+      row.innerHTML =
+        "<span>" + medal + " <b>" + esc(tm.name) + "</b> <span class=\"muted\" style=\"font-size:0.85rem;\">(" +
+        (Number(tm.members) || 0) + " joueur" + (tm.members > 1 ? "s" : "") + ")</span></span>" +
+        "<span class=\"display gold\">" + (Number(tm.avg) || 0) + " <span class=\"muted\" style=\"font-size:0.8rem;\">moy.</span></span>";
+      el.appendChild(row);
+    });
+  }
+
+  // Fenêtre de configuration
+  let draftCount = 2;
+  function teamsModalRender() {
+    const on = $("teams-enabled").checked;
+    $("teams-config").style.opacity = on ? "1" : "0.4";
+    $("teams-config").style.pointerEvents = on ? "" : "none";
+    const cnt = $("teams-count");
+    cnt.innerHTML = "";
+    for (let n = 2; n <= 6; n++) {
+      const b = document.createElement("button");
+      b.className = "btn " + (n === draftCount ? "" : "secondary");
+      b.style.cssText = "padding:8px 16px; font-size:0.95rem;";
+      b.textContent = n;
+      b.addEventListener("click", () => { draftCount = n; teamsModalRender(); });
+      cnt.appendChild(b);
+    }
+    // Conserve les noms déjà saisis quand on change le nombre d'équipes
+    const typed = Array.from(document.querySelectorAll("#teams-names input")).map((i) => i.value);
+    const names = $("teams-names");
+    names.innerHTML = "";
+    for (let i = 0; i < draftCount; i++) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; gap:10px; align-items:center;";
+      const dot = document.createElement("span");
+      dot.style.cssText = "width:18px; height:18px; border-radius:50%; flex:0 0 auto; background:" + TEAM_PRESETS[i].color + ";";
+      const input = document.createElement("input");
+      input.maxLength = 20;
+      input.placeholder = TEAM_PRESETS[i].name;
+      input.value = typed[i] != null ? typed[i] : (teams[i] && teams[i].name !== TEAM_PRESETS[i].name ? teams[i].name : "");
+      input.style.cssText = "flex:1; padding:10px 12px; border-radius:10px; border:none; font-size:1rem; font-family:Inter;";
+      row.appendChild(dot); row.appendChild(input);
+      names.appendChild(row);
+    }
+  }
+  $("btn-teams").addEventListener("click", () => {
+    $("teams-enabled").checked = teamMode;
+    draftCount = teamMode && teams.length ? teams.length : 2;
+    $("teams-names").innerHTML = "";
+    $("teams-error").textContent = "";
+    teamsModalRender();
+    $("teams-modal").classList.remove("hidden");
+  });
+  $("teams-enabled").addEventListener("change", teamsModalRender);
+  $("btn-teams-close").addEventListener("click", () => $("teams-modal").classList.add("hidden"));
+  $("teams-modal").addEventListener("click", (e) => { if (e.target === $("teams-modal")) $("teams-modal").classList.add("hidden"); });
+  $("btn-teams-save").addEventListener("click", () => {
+    const names = Array.from(document.querySelectorAll("#teams-names input")).map((i) => i.value.trim());
+    socket.emit("host:setTeams", { enabled: $("teams-enabled").checked, count: draftCount, names }, (r) => {
+      if (r && r.ok) $("teams-modal").classList.add("hidden");
+      else $("teams-error").textContent = (r && r.error) || "Impossible d'enregistrer.";
+    });
+  });
+
+  /* ---------- Éditeur de questions ---------- */
+  function setQuestionsLabel(count, custom) {
+    $("btn-editor").textContent = "✏️ Questions (" + count + ")" + (custom ? " ✱" : "");
+    $("btn-editor").title = custom ? "Questions personnalisées (enregistrées sur cet appareil)" : "Questions d'origine";
+  }
+  const editor = QuizEditor({ socket, quizId, onChange: setQuestionsLabel });
+  $("btn-editor").addEventListener("click", () => editor.open());
+  socket.on("questionsChanged", (d) => setQuestionsLabel(d.count, d.custom));
 
   /* ---------- Controls ---------- */
   $("btn-start").addEventListener("click", () => socket.emit("host:start"));
