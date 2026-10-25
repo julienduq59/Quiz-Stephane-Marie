@@ -116,6 +116,19 @@
     </section>
   </div>
 
+  <!-- CODE PRÉSENTATEUR -->
+  <div id="code-modal" class="hidden" style="position:fixed; inset:0; z-index:95; background:rgba(10,4,24,0.94); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="card col" style="gap:14px; width:min(420px,100%); text-align:center;">
+      <h2 class="display">🔒 Espace présentateur</h2>
+      <div class="muted">Saisis le code présentateur pour piloter le quiz.<br>Il ne sera demandé qu'une fois sur cet appareil.</div>
+      <input id="code-input" type="password" autocomplete="current-password" placeholder="Code présentateur"
+        style="padding:16px; border-radius:14px; border:none; font-size:1.15rem; text-align:center; font-family:'Inter';" />
+      <button id="code-ok" class="btn big">Entrer</button>
+      <div id="code-error" class="rose-text" style="min-height:20px; font-weight:600;"></div>
+      <a href="/" class="muted" style="font-size:0.85rem;">← Retour à l'accueil</a>
+    </div>
+  </div>
+
   <!-- HISTORIQUE DES PARTIES -->
   <div id="history-modal" class="hidden" style="position:fixed; inset:0; z-index:90; background:rgba(10,4,24,0.82); display:flex; align-items:center; justify-content:center; padding:20px;">
     <div class="card col" style="gap:14px; width:min(760px,100%); max-height:84vh;">

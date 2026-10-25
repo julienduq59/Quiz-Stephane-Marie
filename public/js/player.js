@@ -5,6 +5,12 @@
   // Quiz courant, déduit de l'URL : /quiz/<quizId>
   const quizId = location.pathname.split("/")[2] || "parents";
 
+  // Échappe le texte avant de l'insérer en HTML (prénoms, réponses…) : empêche
+  // toute injection de script par un joueur malveillant.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
   // Personnalise le hero (prénoms fêtés) dès le chargement
   function joinNatural(names) {
     if (names.length <= 1) return names[0] || "";
@@ -13,7 +19,7 @@
   function setNames(names) {
     if (!names || !names.length) return;
     const h = document.getElementById("hero-names");
-    if (h) h.innerHTML = names.join(' <span class="heart">♥</span> ');
+    if (h) h.innerHTML = names.map(esc).join(' <span class="heart">♥</span> ');
     const th = document.getElementById("thanks");
     if (th) th.textContent = `Merci d'avoir joué pour ${joinNatural(names)} ♥`;
     document.title = names.join(" & ") + " — Quiz";
@@ -145,7 +151,7 @@
       const div = document.createElement("button");
       div.className = `tile ${t.cls}`;
       div.dataset.index = i;
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>`;
       div.addEventListener("click", () => answer(i));
       el.appendChild(div);
     });
@@ -289,7 +295,7 @@
       if (i === yourChoice) div.classList.add("chosen");
       div.style.minHeight = "52px";
       div.style.fontSize = "1rem";
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>`;
       el.appendChild(div);
     });
   }

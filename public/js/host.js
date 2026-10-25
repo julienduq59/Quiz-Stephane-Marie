@@ -132,6 +132,12 @@
     return "";
   }
 
+  // Échappe le texte avant de l'insérer en HTML (prénoms, réponses…) : empêche
+  // toute injection de script par un joueur malveillant.
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
   const $ = (id) => document.getElementById(id);
   const screens = {
     lobby: $("screen-lobby"),
@@ -166,7 +172,7 @@
         if (info.pin) setPin(info.pin);
         if (typeof info.isBlind === "boolean") isBlind = info.isBlind;
         if (info.names && info.names.length) {
-          $("hero-names").innerHTML = info.names.join(' <span class="heart">♥</span> ');
+          $("hero-names").innerHTML = info.names.map(esc).join(' <span class="heart">♥</span> ');
           document.title = info.names.join(" & ") + " — Présentateur";
         }
       })
@@ -204,7 +210,7 @@
       div.dataset.index = i;
       let countHtml = "";
       if (opts.distribution) countHtml = `<span class="count">${opts.distribution[i]}</span>`;
-      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${label}</span>${countHtml}`;
+      div.innerHTML = `<span class="shape">${shapeSvg(t.shape)}</span><span class="label">${esc(label)}</span>${countHtml}`;
       if (opts.correct !== undefined) {
         if (i === opts.correct) div.classList.add("correct");
         else div.classList.add("dim");
@@ -280,7 +286,7 @@
       row.style.justifyContent = "space-between";
       row.style.width = "100%";
       const medal = ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
-      row.innerHTML = `<span>${medal} ${p.name}</span><span class="display gold">${p.score}</span>`;
+      row.innerHTML = `<span>${medal} ${esc(p.name)}</span><span class="display gold">${Number(p.score) || 0}</span>`;
       container.appendChild(row);
     });
   }
@@ -300,8 +306,8 @@
       col.style.gap = "10px";
       col.innerHTML = `
         <div class="display" style="font-size:1.3rem;">${["🥇","🥈","🥉"][rankIdx]}</div>
-        <div class="display" style="font-size:1.2rem;">${p.name}</div>
-        <div class="display gold" style="font-size:1.4rem;">${p.score}</div>
+        <div class="display" style="font-size:1.2rem;">${esc(p.name)}</div>
+        <div class="display gold" style="font-size:1.4rem;">${Number(p.score) || 0}</div>
         <div style="width:min(20vw,160px); height:${heights[rankIdx]}; border-radius:14px 14px 0 0;
           background:linear-gradient(180deg, ${colors[rankIdx]}, rgba(255,255,255,0.08));
           box-shadow:var(--shadow); display:flex; align-items:flex-start; justify-content:center;
@@ -312,9 +318,44 @@
   }
 
   /* ---------- Socket events ---------- */
-  socket.on("connect", () => socket.emit("host:join", { quizId }));
+  /* ---------- Code présentateur ---------- */
+  const CODE_KEY = "quiz_host_code";
+  let hostCode = "";
+  try { hostCode = localStorage.getItem(CODE_KEY) || ""; } catch (e) {}
+  const TOKEN_KEY = "quiz_host_token";
+  let hostToken = "";
+  try { hostToken = localStorage.getItem(TOKEN_KEY) || ""; } catch (e) {}
+  let isHost = false;
+  function joinAsHost() { socket.emit("host:join", { quizId, code: hostCode, token: hostToken }); }
+  socket.on("host:token", (d) => {
+    hostToken = (d && d.token) || "";
+    try { localStorage.setItem(TOKEN_KEY, hostToken); } catch (e) {}
+  });
+  function submitCode() {
+    const v = $("code-input").value.trim();
+    if (!v) { $("code-error").textContent = "Entre le code."; return; }
+    hostCode = v;
+    $("code-error").textContent = "";
+    joinAsHost();
+  }
+  $("code-ok").addEventListener("click", submitCode);
+  $("code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submitCode(); });
+  socket.on("host:denied", (d) => {
+    isHost = false;
+    hostToken = "";
+    // On n'oublie le code que s'il est faux (pas en cas de blocage temporaire)
+    try { localStorage.removeItem(TOKEN_KEY); if (d && /incorrect/.test(d.reason || "")) localStorage.removeItem(CODE_KEY); } catch (e) {}
+    $("code-modal").classList.remove("hidden");
+    $("code-error").textContent = (d && d.reason) || "";
+    $("code-input").value = "";
+    setTimeout(() => $("code-input").focus(), 50);
+  });
+  socket.on("connect", joinAsHost);
 
   socket.on("host:state", (s) => {
+    isHost = true;
+    try { localStorage.setItem(CODE_KEY, hostCode); } catch (e) {}
+    $("code-modal").classList.add("hidden");
     setPin(s.pin);
     renderPlayers(s.players, s.count);
     if (s.state === "question" && s.question) renderQuestion(s.question);
@@ -413,11 +454,11 @@
       row.style.cssText = "width:100%; justify-content:space-between; gap:12px; flex-wrap:wrap;";
       const quand = d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) +
         " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      const gagnant = g.top && g.top[0] ? g.top[0].name + " (" + g.top[0].score + " pts)" : "—";
+      const gagnant = g.top && g.top[0] ? esc(g.top[0].name) + " (" + (Number(g.top[0].score) || 0) + " pts)" : "—";
       row.innerHTML =
         '<div style="text-align:left;"><div class="display" style="font-size:0.95rem;">' + quand + '</div>' +
-        '<div class="muted" style="font-size:0.82rem;">' + (g.names || []).join(" & ") + " · " +
-        g.nbPlayers + " joueurs · " + g.nbQuestions + " questions · 🥇 " + gagnant + '</div></div>';
+        '<div class="muted" style="font-size:0.82rem;">' + (g.names || []).map(esc).join(" & ") + " · " +
+        (Number(g.nbPlayers) || 0) + " joueurs · " + (Number(g.nbQuestions) || 0) + " questions · 🥇 " + gagnant + '</div></div>';
       const btns = document.createElement("div");
       btns.style.cssText = "display:flex; gap:8px;";
       const dl = document.createElement("button");

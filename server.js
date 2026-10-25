@@ -531,11 +531,70 @@ function roomOf(socket) {
   return rooms[socket.data.quizId];
 }
 
+/* ----- Sécurité présentateur ----- */
+// Le vrai code se règle dans Render (variable d'environnement HOST_CODE) : le dépôt
+// étant public, le code par défaut ci-dessous n'est qu'un garde-fou.
+const HOST_CODE = String(process.env.HOST_CODE || "mirabelle").trim().toLowerCase();
+const crypto = require("crypto");
+function safeEqual(x, y) {
+  const a = Buffer.from(String(x || "")), b = Buffer.from(String(y || ""));
+  return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b);
+}
+function codeOk(code) {
+  return safeEqual(String(code || "").trim().toLowerCase(), HOST_CODE);
+}
+// Jeton remis au présentateur après un bon code : il lui permet de se reconnecter
+// (veille, coupure réseau) SANS repasser par le code ni subir le blocage anti-force
+// brute — indispensable car tous les invités partagent souvent la même IP (box).
+const HOST_TOKEN = crypto.randomBytes(24).toString("hex");
+// Anti force brute : 8 essais ratés en 10 min depuis la même adresse → blocage 10 min
+const failures = new Map(); // ip -> [timestamps]
+function clientIp(socket) {
+  const xf = socket.handshake.headers["x-forwarded-for"];
+  return String(xf || socket.handshake.address || "").split(",")[0].trim();
+}
+function isLocked(ip) {
+  const now = Date.now();
+  const list = (failures.get(ip) || []).filter((t) => now - t < 10 * 60 * 1000);
+  failures.set(ip, list);
+  return list.length >= 8;
+}
+function noteFailure(ip) {
+  const list = failures.get(ip) || [];
+  list.push(Date.now());
+  failures.set(ip, list);
+}
+// Salle du présentateur, UNIQUEMENT si la socket s'est authentifiée comme tel
+function hostRoomOf(socket) {
+  if (socket.data.role !== "host") return null;
+  return rooms[socket.data.quizId] || null;
+}
+// Nettoie un prénom : pas de balises ni de caractères de contrôle
+function cleanName(raw) {
+  return String(raw || "").replace(/[<>\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);
+}
+
 io.on("connection", (socket) => {
   /* ----- Présentateur ----- */
   socket.on("host:join", (data) => {
     const quizId = data && data.quizId;
     if (!QUIZ_DEFS[quizId]) return;
+    const viaToken = safeEqual(data && data.token, HOST_TOKEN);
+    if (!viaToken) {
+      const code = String((data && data.code) || "").trim();
+      if (!code) { socket.emit("host:denied", { reason: null }); return; } // simple demande de code
+      const ip = clientIp(socket);
+      if (isLocked(ip)) {
+        socket.emit("host:denied", { reason: "Trop d'essais. Réessaie dans quelques minutes." });
+        return;
+      }
+      if (!codeOk(code)) {
+        noteFailure(ip);
+        socket.emit("host:denied", { reason: "Code présentateur incorrect." });
+        return;
+      }
+    }
+    socket.emit("host:token", { token: HOST_TOKEN });
     socket.data.quizId = quizId;
     socket.data.role = "host";
     const room = rooms[quizId];
@@ -552,7 +611,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("host:start", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (!room) return;
     if (room.state === STATES.LOBBY || room.state === STATES.PODIUM) {
       if (room.state === STATES.PODIUM) resetGame(room);
@@ -561,7 +620,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("host:next", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (!room) return;
     if (room.state === STATES.REVEAL || room.state === STATES.LOBBY) {
       startQuestion(room);
@@ -569,22 +628,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("host:reveal", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (room && room.state === STATES.QUESTION) revealAnswer(room);
   });
 
   socket.on("host:leaderboard", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (room) showLeaderboard(room);
   });
 
   socket.on("host:restart", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (room) resetGame(room);
   });
 
   socket.on("host:newRoom", () => {
-    const room = roomOf(socket);
+    const room = hostRoomOf(socket);
     if (room) newRoom(room);
   });
 
@@ -597,7 +656,7 @@ io.on("connection", (socket) => {
     }
     const room = rooms[quizId];
     const def = QUIZ_DEFS[quizId];
-    const name = (data && data.name ? String(data.name) : "").trim().slice(0, 20);
+    const name = cleanName(data && data.name);
     const wantedPin = (data && data.pin ? String(data.pin) : "").trim().toUpperCase();
     const reconnectId = data && data.playerId ? String(data.playerId) : null;
 
