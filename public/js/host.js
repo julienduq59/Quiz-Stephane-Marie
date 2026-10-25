@@ -391,6 +391,8 @@
     try { localStorage.setItem(CODE_KEY, hostCode); } catch (e) {}
     $("code-modal").classList.add("hidden");
     applyTeams(s.teamMode, s.teams);
+    if (s.questionCount != null) setQuestionsLabel(s.questionCount, s.customQuestions);
+    editor.pushLocal(); // renvoie les questions modifiées sur cet appareil (serveur redémarré…)
     setPin(s.pin);
     renderPlayers(s.players, s.count);
     if (s.state === "question" && s.question) renderQuestion(s.question);
@@ -638,6 +640,15 @@
       else $("teams-error").textContent = (r && r.error) || "Impossible d'enregistrer.";
     });
   });
+
+  /* ---------- Éditeur de questions ---------- */
+  function setQuestionsLabel(count, custom) {
+    $("btn-editor").textContent = "✏️ Questions (" + count + ")" + (custom ? " ✱" : "");
+    $("btn-editor").title = custom ? "Questions personnalisées (enregistrées sur cet appareil)" : "Questions d'origine";
+  }
+  const editor = QuizEditor({ socket, quizId, onChange: setQuestionsLabel });
+  $("btn-editor").addEventListener("click", () => editor.open());
+  socket.on("questionsChanged", (d) => setQuestionsLabel(d.count, d.custom));
 
   /* ---------- Controls ---------- */
   $("btn-start").addEventListener("click", () => socket.emit("host:start"));

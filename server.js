@@ -88,7 +88,7 @@ function quizPublicList() {
     id: d.id,
     names: d.names,
     subtitle: d.subtitle,
-    questionCount: d.questions.length,
+    questionCount: effectiveQuestions(d.id).length,
     isBlind: !!d.isBlind,
   }));
 }
@@ -166,7 +166,7 @@ app.get("/api/blind-check", async (req, res) => {
   if (!defs.length) return res.status(404).json({ error: "Aucun blind test correspondant." });
   const out = {};
   for (const def of defs) {
-    const rows = await prewarm(def.questions);
+    const rows = await prewarm(effectiveQuestions(def.id));
     out[def.id] = {
       nom: def.names.join(" "),
       total: rows.length,
@@ -202,7 +202,7 @@ app.get("/api/connect-info", async (req, res) => {
     res.json({
       url, joinUrl, qr, pin: room.pin, quizId,
       names: def.names,
-      subtitle: def.subtitle, questionCount: def.questions.length,
+      subtitle: def.subtitle, questionCount: effectiveQuestions(quizId).length,
       isBlind: !!def.isBlind,
     });
   } catch (err) {
@@ -283,6 +283,7 @@ function makeRoom(quizId) {
     lastResults: null, // récap de la dernière partie terminée
     teamMode: false, // mode équipes activé ?
     teams: [], // [{ id, name, color }]
+    activeQuestions: null, // liste figée pendant la partie en cours
     timeLeft: 0,
   };
 }
@@ -305,7 +306,13 @@ const POINTS_BONUS = 500;
 
 const hostRoom = (room) => "host:" + room.quizId;
 const playersRoom = (room) => "players:" + room.quizId;
-const questionsOf = (room) => QUIZ_DEFS[room.quizId].questions;
+// Questions modifiées via l'éditeur (gardées en mémoire ; le navigateur du
+// présentateur les renvoie à chaque connexion, car le disque de Render est effacé
+// à chaque redémarrage).
+const overrides = {}; // quizId -> questions[]
+const effectiveQuestions = (quizId) => overrides[quizId] || QUIZ_DEFS[quizId].questions;
+// Pendant une partie on utilise la liste figée au lancement (room.activeQuestions)
+const questionsOf = (room) => room.activeQuestions || effectiveQuestions(room.quizId);
 
 function publicPlayerList(room) {
   return Array.from(room.players.values())
@@ -403,6 +410,7 @@ function answerCount(room) {
 /* ------------------------------------------------------------------ */
 
 function startQuestion(room) {
+  if (room.currentIndex === -1) room.activeQuestions = effectiveQuestions(room.quizId);
   const questions = questionsOf(room);
   // Nouvelle partie → on (re)mélange l'ordre des questions
   if (room.currentIndex === -1) {
@@ -553,6 +561,7 @@ function showPodium(room) {
 function resetGame(room) {
   clearInterval(room.timer);
   clearTimeout(room.graceTimer);
+  room.activeQuestions = null;
   room.state = STATES.LOBBY;
   room.currentIndex = -1;
   room.answers = new Map();
@@ -569,6 +578,7 @@ function resetGame(room) {
 function newRoom(room) {
   clearInterval(room.timer);
   clearTimeout(room.graceTimer);
+  room.activeQuestions = null;
   room.pin = makePin();
   room.state = STATES.LOBBY;
   room.currentIndex = -1;
@@ -628,6 +638,52 @@ function hostRoomOf(socket) {
   if (socket.data.role !== "host") return null;
   return rooms[socket.data.quizId] || null;
 }
+// Texte libre de l'éditeur : sans caractères de contrôle, espaces normalisés, longueur bornée
+function cleanText(v, max) {
+  return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+}
+// Vérifie et nettoie les questions venant de l'éditeur. Renvoie { questions } ou { error }.
+function sanitizeQuestions(list, def) {
+  if (!Array.isArray(list)) return { error: "Format de questions invalide." };
+  if (!list.length) return { error: "Il faut au moins une question." };
+  if (list.length > 100) return { error: "100 questions maximum." };
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const q = list[i] || {}, n = i + 1;
+    const text = cleanText(q.text, 300);
+    if (!text) return { error: `Question ${n} : l'énoncé est vide.` };
+    const raw = Array.isArray(q.options) ? q.options.slice(0, 4) : [];
+    const wanted = parseInt(q.correct, 10);
+    // On retire les réponses vides en gardant la bonne réponse alignée
+    const options = []; let correct = -1;
+    raw.forEach((o, j) => {
+      const t = cleanText(o, 120);
+      if (!t) return;
+      if (j === wanted) correct = options.length;
+      options.push(t);
+    });
+    if (options.length < 2) return { error: `Question ${n} : il faut au moins 2 réponses.` };
+    if (correct < 0) return { error: `Question ${n} : la bonne réponse cochée est vide.` };
+    const time = Math.min(120, Math.max(5, parseInt(q.time, 10) || (def.isBlind ? 30 : 40)));
+    const item = { text, options, correct, time };
+    const m = q.music || {};
+    const artist = cleanText(m.artist, 120), title = cleanText(m.title, 120);
+    if (def.isBlind && (!artist || !title)) return { error: `Question ${n} : indique l'artiste et le titre de la musique.` };
+    if (artist && title) {
+      item.music = { artist, title };
+      const audio = cleanText(m.audio, 300);
+      if (audio) {
+        if (!/^\/audio\/[\w.\-]+$/.test(audio) && !/^https:\/\//.test(audio)) {
+          return { error: `Question ${n} : lien audio invalide (fichier /audio/… ou adresse https://…).` };
+        }
+        item.music.audio = audio;
+      }
+    }
+    out.push(item);
+  }
+  return { questions: out };
+}
+
 // Nettoie un prénom : pas de balises ni de caractères de contrôle
 function cleanName(raw) {
   return String(raw || "").replace(/[<>\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);
@@ -667,6 +723,8 @@ io.on("connection", (socket) => {
       timeLeft: room.timeLeft,
       teamMode: room.teamMode,
       teams: publicTeams(room),
+      questionCount: effectiveQuestions(quizId).length,
+      customQuestions: !!overrides[quizId],
     });
     broadcastPlayers(room);
   });
@@ -706,6 +764,33 @@ io.on("connection", (socket) => {
   socket.on("host:newRoom", () => {
     const room = hostRoomOf(socket);
     if (room) newRoom(room);
+  });
+
+  /* ----- Éditeur de questions (présentateur uniquement) ----- */
+  socket.on("host:getQuestions", (data, ack) => {
+    const room = hostRoomOf(socket);
+    if (!room || typeof ack !== "function") return;
+    ack({ ok: true, questions: effectiveQuestions(room.quizId), custom: !!overrides[room.quizId],
+          isBlind: !!QUIZ_DEFS[room.quizId].isBlind });
+  });
+  socket.on("host:setQuestions", (data, ack) => {
+    const room = hostRoomOf(socket);
+    if (!room) return;
+    const r = sanitizeQuestions(data && data.questions, QUIZ_DEFS[room.quizId]);
+    if (r.error) { if (ack) ack({ ok: false, error: r.error }); return; }
+    overrides[room.quizId] = r.questions;
+    // En pleine partie, la liste en cours reste figée : les modifs valent pour la suivante
+    const enJeu = room.state === STATES.QUESTION || room.state === STATES.REVEAL;
+    if (ack) ack({ ok: true, count: r.questions.length, nextGame: enJeu, questions: r.questions });
+    io.to(hostRoom(room)).emit("questionsChanged", { count: r.questions.length, custom: true });
+  });
+  socket.on("host:resetQuestions", (data, ack) => {
+    const room = hostRoomOf(socket);
+    if (!room) return;
+    delete overrides[room.quizId];
+    const qs = QUIZ_DEFS[room.quizId].questions;
+    if (ack) ack({ ok: true, questions: qs });
+    io.to(hostRoom(room)).emit("questionsChanged", { count: qs.length, custom: false });
   });
 
   // Configure le mode équipes : { enabled, count (2-6), names: [..] }

@@ -65,6 +65,7 @@
           <div id="teams-summary" class="hidden" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button id="btn-teams" class="btn secondary" style="flex:1;">👥 Équipes : non</button>
+            <button id="btn-editor" class="btn secondary" style="flex:1;">✏️ Questions</button>
             <button id="btn-history" class="btn secondary" style="flex:1;">📚 Historique</button>
           </div>
           <div class="muted center" id="lobby-hint" style="font-size:0.9rem;">En attente d'au moins 1 joueur…</div>
@@ -144,6 +145,30 @@
     </div>
   </div>
 
+  <!-- ÉDITEUR DE QUESTIONS -->
+  <div id="editor-modal" class="hidden" style="position:fixed; inset:0; z-index:92; background:rgba(10,4,24,0.95); overflow:auto; padding:18px;">
+    <div class="col" style="max-width:980px; margin:0 auto;">
+      <div class="card col" style="gap:10px; position:sticky; top:0; z-index:2; background:rgba(40,16,72,0.97);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h2 class="display">✏️ Questions <span id="ed-count" class="muted" style="font-size:0.9rem;"></span></h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="ed-add" class="btn secondary">＋ Ajouter</button>
+            <button id="ed-save" class="btn">💾 Enregistrer</button>
+            <button id="ed-close" class="btn secondary">Fermer ✕</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="ed-export" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">⬇ Exporter</button>
+          <button id="ed-import" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">⬆ Importer</button>
+          <button id="ed-reset" class="btn secondary" style="font-size:0.8rem; padding:8px 12px;">↺ Questions d'origine</button>
+          <input id="ed-file" type="file" accept=".json,application/json" class="hidden" />
+        </div>
+        <div id="ed-status" class="muted" style="font-size:0.85rem; min-height:1.2em;"></div>
+      </div>
+      <div id="ed-list" class="col" style="gap:14px; margin-top:14px; padding-bottom:40px;"></div>
+    </div>
+  </div>
+
   <!-- CONFIGURATION DES ÉQUIPES -->
   <div id="teams-modal" class="hidden" style="position:fixed; inset:0; z-index:90; background:rgba(10,4,24,0.82); display:flex; align-items:center; justify-content:center; padding:20px;">
     <div class="card col" style="gap:14px; width:min(560px,100%); max-height:90vh; overflow:auto;">
@@ -188,6 +213,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/confetti.js"></script>
   <script src="/js/sfx.js"></script>
+  <script src="/js/editor.js"></script>
   <script src="/js/host.js"></script>
 </body>
 </html>
