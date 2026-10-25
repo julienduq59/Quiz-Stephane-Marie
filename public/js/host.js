@@ -6,6 +6,13 @@
   const quizId = location.pathname.split("/")[2] || "parents";
   let playerCount = 0; // joueurs connectés (pour « Réponses : n / total »)
   let isBlind = false;  // vrai pour le quiz blind test (renseigné par /api/connect-info)
+  let teamMode = false, teams = []; // mode équipes (config reçue du serveur)
+  let lastPlayers = [];              // dernière liste de joueurs (pour la recolorer)
+  const TEAM_PRESETS = [
+    { name: "Équipe Rouge", color: "#e8443b" }, { name: "Équipe Bleue", color: "#1368ce" },
+    { name: "Équipe Jaune", color: "#d89e00" }, { name: "Équipe Verte", color: "#26890c" },
+    { name: "Équipe Violette", color: "#8e44ad" }, { name: "Équipe Orange", color: "#e67e22" },
+  ];
 
   /* ---------- Synthèse vocale (lecture des questions en français) ---------- */
   const TTS = "speechSynthesis" in window;
@@ -184,6 +191,7 @@
   /* ---------- Player list ---------- */
   function renderPlayers(players, count) {
     playerCount = count;
+    lastPlayers = players;
     $("player-count").textContent = count;
     const el = $("player-list");
     el.innerHTML = "";
@@ -191,6 +199,11 @@
       const chip = document.createElement("div");
       chip.className = "pill";
       chip.textContent = p.name;
+      const team = teamMode && teams.find((x) => x.id === p.teamId);
+      if (team) {
+        chip.style.borderColor = team.color;
+        chip.style.boxShadow = "inset 4px 0 0 " + team.color;
+      }
       el.appendChild(chip);
     });
     const canStart = count > 0;
@@ -377,6 +390,7 @@
     isHost = true;
     try { localStorage.setItem(CODE_KEY, hostCode); } catch (e) {}
     $("code-modal").classList.add("hidden");
+    applyTeams(s.teamMode, s.teams);
     setPin(s.pin);
     renderPlayers(s.players, s.count);
     if (s.state === "question" && s.question) renderQuestion(s.question);
@@ -412,6 +426,7 @@
     $("r-text").textContent = currentText + "  →  " + currentOptions[d.correct];
     renderQuestionTiles($("r-tiles"), currentOptions, { correct: d.correct, distribution: d.distribution });
     renderLeaderboard($("r-leaderboard"), d.leaderboard, 8);
+    renderTeamBoard("r-teams-card", "r-teams", d.teams);
     const isLast = d.index + 1 >= qTotal;
     const label = isLast ? "Voir le podium 🏆" : "Question suivante ▶";
     $("btn-next").textContent = label;
@@ -429,6 +444,7 @@
     histRecord(); // sauvegarde automatique de la partie terminée
     renderPodium(d.podium);
     renderLeaderboard($("full-leaderboard"), d.leaderboard);
+    renderTeamBoard("p-teams-card", "p-teams", d.teams);
     confetti.shower(4000);
     setTimeout(() => confetti.burst(160), 300);
   });
@@ -528,6 +544,99 @@
   $("btn-history-close").addEventListener("click", () => $("history-modal").classList.add("hidden"));
   $("history-modal").addEventListener("click", (e) => {
     if (e.target === $("history-modal")) $("history-modal").classList.add("hidden");
+  });
+
+
+  /* ---------- Mode équipes ---------- */
+  function applyTeams(enabled, list) {
+    teamMode = !!enabled;
+    teams = list || [];
+    $("btn-teams").textContent = teamMode ? "👥 Équipes : " + teams.length : "👥 Équipes : non";
+    const sum = $("teams-summary");
+    sum.innerHTML = "";
+    sum.classList.toggle("hidden", !teamMode);
+    teams.forEach((tm) => {
+      const chip = document.createElement("span");
+      chip.className = "pill";
+      chip.style.cssText = "font-size:0.85rem; border-color:" + tm.color + "; box-shadow: inset 4px 0 0 " + tm.color + ";";
+      chip.textContent = tm.name + " · " + (tm.count || 0);
+      sum.appendChild(chip);
+    });
+    renderPlayers(lastPlayers, lastPlayers.length);
+  }
+  socket.on("teams", (d) => applyTeams(d.enabled, d.teams));
+
+  // Classement des équipes (révélation et podium)
+  function renderTeamBoard(card, container, board) {
+    const list = board || [];
+    $(card).classList.toggle("hidden", !list.length);
+    const el = $(container);
+    el.innerHTML = "";
+    list.forEach((tm, i) => {
+      const row = document.createElement("div");
+      row.className = "pill";
+      row.style.cssText = "width:100%; justify-content:space-between; box-shadow: inset 6px 0 0 " + tm.color + ";" +
+        (i === 0 ? " border-color:" + tm.color + ";" : "");
+      const medal = ["🥇", "🥈", "🥉"][i] || (i + 1) + ".";
+      row.innerHTML =
+        "<span>" + medal + " <b>" + esc(tm.name) + "</b> <span class=\"muted\" style=\"font-size:0.85rem;\">(" +
+        (Number(tm.members) || 0) + " joueur" + (tm.members > 1 ? "s" : "") + ")</span></span>" +
+        "<span class=\"display gold\">" + (Number(tm.avg) || 0) + " <span class=\"muted\" style=\"font-size:0.8rem;\">moy.</span></span>";
+      el.appendChild(row);
+    });
+  }
+
+  // Fenêtre de configuration
+  let draftCount = 2;
+  function teamsModalRender() {
+    const on = $("teams-enabled").checked;
+    $("teams-config").style.opacity = on ? "1" : "0.4";
+    $("teams-config").style.pointerEvents = on ? "" : "none";
+    const cnt = $("teams-count");
+    cnt.innerHTML = "";
+    for (let n = 2; n <= 6; n++) {
+      const b = document.createElement("button");
+      b.className = "btn " + (n === draftCount ? "" : "secondary");
+      b.style.cssText = "padding:8px 16px; font-size:0.95rem;";
+      b.textContent = n;
+      b.addEventListener("click", () => { draftCount = n; teamsModalRender(); });
+      cnt.appendChild(b);
+    }
+    // Conserve les noms déjà saisis quand on change le nombre d'équipes
+    const typed = Array.from(document.querySelectorAll("#teams-names input")).map((i) => i.value);
+    const names = $("teams-names");
+    names.innerHTML = "";
+    for (let i = 0; i < draftCount; i++) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; gap:10px; align-items:center;";
+      const dot = document.createElement("span");
+      dot.style.cssText = "width:18px; height:18px; border-radius:50%; flex:0 0 auto; background:" + TEAM_PRESETS[i].color + ";";
+      const input = document.createElement("input");
+      input.maxLength = 20;
+      input.placeholder = TEAM_PRESETS[i].name;
+      input.value = typed[i] != null ? typed[i] : (teams[i] && teams[i].name !== TEAM_PRESETS[i].name ? teams[i].name : "");
+      input.style.cssText = "flex:1; padding:10px 12px; border-radius:10px; border:none; font-size:1rem; font-family:Inter;";
+      row.appendChild(dot); row.appendChild(input);
+      names.appendChild(row);
+    }
+  }
+  $("btn-teams").addEventListener("click", () => {
+    $("teams-enabled").checked = teamMode;
+    draftCount = teamMode && teams.length ? teams.length : 2;
+    $("teams-names").innerHTML = "";
+    $("teams-error").textContent = "";
+    teamsModalRender();
+    $("teams-modal").classList.remove("hidden");
+  });
+  $("teams-enabled").addEventListener("change", teamsModalRender);
+  $("btn-teams-close").addEventListener("click", () => $("teams-modal").classList.add("hidden"));
+  $("teams-modal").addEventListener("click", (e) => { if (e.target === $("teams-modal")) $("teams-modal").classList.add("hidden"); });
+  $("btn-teams-save").addEventListener("click", () => {
+    const names = Array.from(document.querySelectorAll("#teams-names input")).map((i) => i.value.trim());
+    socket.emit("host:setTeams", { enabled: $("teams-enabled").checked, count: draftCount, names }, (r) => {
+      if (r && r.ok) $("teams-modal").classList.add("hidden");
+      else $("teams-error").textContent = (r && r.error) || "Impossible d'enregistrer.";
+    });
   });
 
   /* ---------- Controls ---------- */

@@ -129,7 +129,7 @@ function resultsOf(quizId) {
   if (!def) return null;
   const room = rooms[quizId];
   // récap figé en fin de partie, sinon calcul à la volée si une partie est en cours
-  return room.lastResults || (room.history && room.history.length ? buildResults(room, def) : null);
+  return room.lastResults || (room.history && room.history.length ? buildResults(room, def, teamBoard(room)) : null);
 }
 
 app.get("/api/results", (req, res) => {
@@ -281,6 +281,8 @@ function makeRoom(quizId) {
     history: [], // détail de chaque question jouée (pour le récap / PDF)
     startedAt: null, // début de la partie
     lastResults: null, // récap de la dernière partie terminée
+    teamMode: false, // mode équipes activé ?
+    teams: [], // [{ id, name, color }]
     timeLeft: 0,
   };
 }
@@ -308,7 +310,7 @@ const questionsOf = (room) => QUIZ_DEFS[room.quizId].questions;
 function publicPlayerList(room) {
   return Array.from(room.players.values())
     .filter((p) => p.connected)
-    .map((p) => ({ id: p.id, name: p.name, score: p.score }));
+    .map((p) => ({ id: p.id, name: p.name, score: p.score, teamId: p.teamId || null }));
 }
 
 function leaderboard(room) {
@@ -342,6 +344,56 @@ function broadcastPlayers(room) {
   io.to(hostRoom(room)).emit("players", { players: list, count: list.length });
 }
 
+/* ----- Mode équipes ----- */
+const TEAM_PRESETS = [
+  { name: "Équipe Rouge", color: "#e8443b" },
+  { name: "Équipe Bleue", color: "#1368ce" },
+  { name: "Équipe Jaune", color: "#d89e00" },
+  { name: "Équipe Verte", color: "#26890c" },
+  { name: "Équipe Violette", color: "#8e44ad" },
+  { name: "Équipe Orange", color: "#e67e22" },
+];
+const teamOf = (room, id) => room.teams.find((t) => t.id === id) || null;
+
+// Équipes avec leur nombre de joueurs (pour l'affichage et le choix)
+function publicTeams(room) {
+  return room.teams.map((t) => ({
+    ...t,
+    count: Array.from(room.players.values()).filter((p) => p.teamId === t.id).length,
+  }));
+}
+function broadcastTeams(room) {
+  const payload = { enabled: room.teamMode, teams: publicTeams(room) };
+  io.to(hostRoom(room)).to(playersRoom(room)).emit("teams", payload);
+}
+// Range un joueur sans équipe dans la moins nombreuse (équilibre automatique)
+function autoAssign(room, player) {
+  if (!room.teamMode || !room.teams.length || teamOf(room, player.teamId)) return;
+  const sizes = publicTeams(room).sort((a, b) => a.count - b.count);
+  player.teamId = sizes[0].id;
+}
+// Classement des équipes : MOYENNE par joueur (sinon la plus grande table gagne d'office)
+function teamBoard(room) {
+  if (!room.teamMode) return [];
+  return room.teams
+    .map((t) => {
+      const members = Array.from(room.players.values()).filter((p) => p.teamId === t.id);
+      const total = members.reduce((a, p) => a + p.score, 0);
+      return { id: t.id, name: t.name, color: t.color, members: members.length,
+               total, avg: members.length ? Math.round(total / members.length) : 0 };
+    })
+    .filter((t) => t.members > 0)
+    .sort((a, b) => b.avg - a.avg || b.total - a.total);
+}
+// Infos d'équipe d'un joueur (pour son téléphone)
+function playerTeamInfo(room, player) {
+  if (!room.teamMode) return null;
+  const board = teamBoard(room);
+  const i = board.findIndex((t) => t.id === player.teamId);
+  if (i < 0) return null;
+  return { name: board[i].name, color: board[i].color, rank: i + 1, total: board.length, avg: board[i].avg };
+}
+
 function answerCount(room) {
   return room.answers.size;
 }
@@ -357,6 +409,10 @@ function startQuestion(room) {
     room.order = shuffle(questions.map((_, i) => i));
     room.history = [];
     room.startedAt = Date.now();
+    if (room.teamMode) {
+      for (const p of room.players.values()) autoAssign(room, p);
+      broadcastTeams(room);
+    }
     // Blind test : on récupère les extraits à l'avance pour éviter tout délai
     if (QUIZ_DEFS[room.quizId].isBlind) {
       prewarm(questions).catch(() => {});
@@ -437,6 +493,7 @@ function revealAnswer(room) {
     distribution,
     answerCount: answerCount(room),
     leaderboard: leaderboard(room),
+    teams: teamBoard(room),
   });
 
   // Archive la question pour le récapitulatif de fin de partie
@@ -468,6 +525,7 @@ function revealAnswer(room) {
       score: p.score,
       rank,
       totalPlayers: board.length,
+      team: playerTeamInfo(room, p),
     });
   }
 }
@@ -482,13 +540,13 @@ function showPodium(room) {
   room.state = STATES.PODIUM;
   // Fige le récapitulatif de la partie (classement + stats) pour l'export PDF
   if (room.history && room.history.length) {
-    room.lastResults = buildResults(room, QUIZ_DEFS[room.quizId]);
+    room.lastResults = buildResults(room, QUIZ_DEFS[room.quizId], teamBoard(room));
   }
   const board = leaderboard(room);
-  io.to(hostRoom(room)).emit("podium", { podium: board.slice(0, 3), leaderboard: board });
+  io.to(hostRoom(room)).emit("podium", { podium: board.slice(0, 3), leaderboard: board, teams: teamBoard(room) });
   for (const p of room.players.values()) {
     const rank = board.findIndex((r) => r.id === p.id) + 1;
-    io.to(p.socketId || "").emit("finished", { rank, totalPlayers: board.length, score: p.score });
+    io.to(p.socketId || "").emit("finished", { rank, totalPlayers: board.length, score: p.score, team: playerTeamInfo(room, p) });
   }
 }
 
@@ -520,6 +578,7 @@ function newRoom(room) {
   io.in(playersRoom(room)).socketsLeave(playersRoom(room));
   room.players.clear();
   io.to(hostRoom(room)).emit("newRoom", { pin: room.pin });
+  broadcastTeams(room);
   broadcastPlayers(room);
 }
 
@@ -606,6 +665,8 @@ io.on("connection", (socket) => {
       count: publicPlayerList(room).length,
       question: room.state === STATES.QUESTION ? { ...questionPublic(room), answerCount: answerCount(room) } : null,
       timeLeft: room.timeLeft,
+      teamMode: room.teamMode,
+      teams: publicTeams(room),
     });
     broadcastPlayers(room);
   });
@@ -645,6 +706,35 @@ io.on("connection", (socket) => {
   socket.on("host:newRoom", () => {
     const room = hostRoomOf(socket);
     if (room) newRoom(room);
+  });
+
+  // Configure le mode équipes : { enabled, count (2-6), names: [..] }
+  socket.on("host:setTeams", (data, ack) => {
+    const room = hostRoomOf(socket);
+    if (!room) return;
+    if (room.state !== STATES.LOBBY && room.state !== STATES.PODIUM) {
+      if (ack) ack({ ok: false, error: "Modifiable seulement entre deux parties." });
+      return;
+    }
+    const enabled = !!(data && data.enabled);
+    const count = Math.min(6, Math.max(2, parseInt(data && data.count, 10) || 2));
+    const names = Array.isArray(data && data.names) ? data.names : [];
+    const before = room.teams;
+    room.teamMode = enabled;
+    room.teams = enabled
+      ? TEAM_PRESETS.slice(0, count).map((preset, i) => ({
+          id: "t" + (i + 1),
+          name: cleanName(names[i]) || (before[i] && before[i].name) || preset.name,
+          color: preset.color,
+        }))
+      : [];
+    // Les joueurs d'une équipe supprimée (ou si on désactive) repassent « sans équipe »
+    for (const pl of room.players.values()) {
+      if (!enabled || !teamOf(room, pl.teamId)) pl.teamId = null;
+    }
+    broadcastTeams(room);
+    broadcastPlayers(room);
+    if (ack) ack({ ok: true });
   });
 
   /* ----- Joueur ----- */
@@ -695,7 +785,7 @@ io.on("connection", (socket) => {
       } else {
         // 3) Nouveau joueur
         const id = reconnectId || `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        player = { id, name, score: 0, connected: true, socketId: socket.id, lastAnswer: null };
+        player = { id, name, score: 0, connected: true, socketId: socket.id, lastAnswer: null, teamId: null };
         room.players.set(id, player);
       }
     }
@@ -704,6 +794,13 @@ io.on("connection", (socket) => {
     socket.data.role = "player";
     socket.data.playerId = player.id;
     socket.join(playersRoom(room));
+
+    // Équipe : choix libre au lobby ; en cours de partie, placement automatique
+    if (room.teamMode) {
+      const wanted = data && data.teamId;
+      if (room.state === STATES.LOBBY && teamOf(room, wanted)) player.teamId = wanted;
+      if (room.state !== STATES.LOBBY) autoAssign(room, player);
+    }
 
     if (ack) {
       ack({
@@ -715,8 +812,12 @@ io.on("connection", (socket) => {
         state: room.state,
         names: def.names,
         reconnected: reconnected && player.score > 0,
+        teamMode: room.teamMode,
+        teams: publicTeams(room),
+        teamId: player.teamId || null,
       });
     }
+    if (room.teamMode) broadcastTeams(room);
 
     // Resynchronise un joueur qui rejoint en cours de partie
     if (room.state === STATES.QUESTION) {
@@ -740,14 +841,30 @@ io.on("connection", (socket) => {
         score: player.score,
         rank,
         totalPlayers: board.length,
+        team: playerTeamInfo(room, player),
       });
     } else if (room.state === STATES.PODIUM) {
       const board = leaderboard(room);
       const rank = board.findIndex((r) => r.id === player.id) + 1;
-      socket.emit("finished", { rank, totalPlayers: board.length, score: player.score });
+      socket.emit("finished", { rank, totalPlayers: board.length, score: player.score, team: playerTeamInfo(room, player) });
     }
 
     broadcastPlayers(room);
+  });
+
+  socket.on("player:setTeam", (data, ack) => {
+    const room = roomOf(socket);
+    const player = room && room.players.get(socket.data.playerId);
+    if (!room || !player || !room.teamMode) { if (ack) ack({ ok: false }); return; }
+    if (room.state !== STATES.LOBBY) {
+      if (ack) ack({ ok: false, error: "On ne change plus d'équipe une fois la partie lancée." });
+      return;
+    }
+    if (!teamOf(room, data && data.teamId)) { if (ack) ack({ ok: false, error: "Équipe inconnue." }); return; }
+    player.teamId = data.teamId;
+    broadcastTeams(room);
+    broadcastPlayers(room);
+    if (ack) ack({ ok: true, teamId: player.teamId });
   });
 
   socket.on("player:answer", (data, ack) => {

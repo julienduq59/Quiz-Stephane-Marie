@@ -7,7 +7,7 @@ const PDFDocument = require("pdfkit");
 /* Calcul du récapitulatif                                             */
 /* ------------------------------------------------------------------ */
 
-function buildResults(room, def) {
+function buildResults(room, def, teamBoard) {
   const players = Array.from(room.players.values());
   const ranking = players
     .map((p) => ({ name: p.name, score: p.score }))
@@ -63,6 +63,7 @@ function buildResults(room, def) {
     nbPlayers: players.length,
     nbQuestions: nbQ,
     ranking,
+    teams: (teamBoard || []).map((t) => ({ name: t.name, color: t.color, members: t.members, avg: t.avg, total: t.total })),
     questions,
     playerStats: playerStats.sort((a, b) => b.score - a.score),
     stats: {
@@ -87,6 +88,23 @@ function buildResults(room, def) {
 /* Génération du PDF                                                   */
 /* ------------------------------------------------------------------ */
 
+// Les polices PDF standard ne savent afficher que l'encodage WinAnsi (latin + quelques
+// signes) : on retire le reste (emoji, cœurs…) qui s'afficherait en caractères bizarres.
+const CP1252_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+function pdfSafe(v) {
+  if (typeof v === "string") {
+    return Array.from(v).filter((ch) => ch.codePointAt(0) <= 0xff || CP1252_EXTRA.includes(ch))
+      .join("").replace(/\s+/g, " ").trim();
+  }
+  if (Array.isArray(v)) return v.map(pdfSafe);
+  if (v && typeof v === "object" && !(v instanceof Date)) {
+    const o = {};
+    for (const k of Object.keys(v)) o[k] = /color/i.test(k) ? v[k] : pdfSafe(v[k]);
+    return o;
+  }
+  return v;
+}
+
 const PRUNE = "#2d1155", OR = "#b8860b", ROSE = "#c2185b", GRIS = "#555555";
 
 function fmtDate(d) {
@@ -94,7 +112,9 @@ function fmtDate(d) {
   return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-function writePdf(r, stream) {
+function writePdf(raw, stream) {
+  const r = pdfSafe(raw);
+  r.date = raw.date instanceof Date ? raw.date : new Date(raw.date || Date.now());
   const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: "Résultats — " + r.names.join(" & ") } });
   doc.pipe(stream);
   const W = doc.page.width - 96; // largeur utile
@@ -140,13 +160,35 @@ function writePdf(r, stream) {
   });
   doc.moveDown(0.4);
 
+  // ---- Classement des équipes ----
+  if (r.teams && r.teams.length) {
+    section(doc, "Classement des équipes");
+    r.teams.forEach((tm, i) => {
+      needSpace(doc, 26);
+      const y = doc.y;
+      doc.roundedRect(48, y, W, 22, 5).fillAndStroke(i === 0 ? "#fdf6e0" : "#f7f7f9", "#e6e6ee");
+      doc.rect(48, y, 6, 22).fill(tm.color || PRUNE);
+      doc.fillColor("#000000").font("Helvetica-Bold").fontSize(11)
+         .text((i + 1) + ". " + tm.name, 62, y + 6, { width: W - 220 });
+      doc.fillColor(GRIS).font("Helvetica").fontSize(9)
+         .text(tm.members + " joueur" + (tm.members > 1 ? "s" : "") + "  •  total " + tm.total + " pts", 48, y + 7, { width: W - 110, align: "right" });
+      doc.fillColor(PRUNE).font("Helvetica-Bold").fontSize(11).text(tm.avg + " moy.", 48, y + 6, { width: W - 12, align: "right" });
+      doc.y = y + 27;
+    });
+    doc.fillColor(GRIS).font("Helvetica").fontSize(8).text("Classement à la moyenne de points par joueur.", 56, doc.y);
+    doc.moveDown(0.6);
+    doc.fillColor("#000000");
+  }
+
   // ---- Faits marquants ----
   const st = r.stats;
   const faits = [];
   if (st.fastestAnswer) faits.push(["Réponse la plus rapide", st.fastestAnswer.name + " en " + st.fastestAnswer.sec + " s"]);
   if (st.speedster) faits.push(["Gâchette la plus rapide", st.speedster.name + " (" + st.speedster.sec + " s en moyenne)"]);
   if (st.easiest) faits.push(["Question la plus facile", "n°" + st.easiest.n + " — " + st.easiest.rate + " % de bonnes réponses"]);
-  if (st.hardest) faits.push(["Question la plus piégeuse", "n°" + st.hardest.n + " — " + st.hardest.rate + " % de bonnes réponses"]);
+  if (st.hardest && (!st.easiest || st.hardest.n !== st.easiest.n)) {
+    faits.push(["Question la plus piégeuse", "n°" + st.hardest.n + " — " + st.hardest.rate + " % de bonnes réponses"]);
+  }
   if (st.perfect.length) faits.push(["Sans-faute", st.perfect.join(", ")]);
   if (r.durationMin) faits.push(["Durée de la partie", "environ " + r.durationMin + " min"]);
   if (faits.length) {
