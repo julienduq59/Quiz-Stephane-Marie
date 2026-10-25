@@ -141,7 +141,9 @@ app.get("/api/results", (req, res) => {
 // Regénère un PDF à partir d'un récap sauvegardé côté navigateur (historique)
 app.post("/api/results.pdf", (req, res) => {
   const r = req.body;
-  if (!r || !r.ranking || !r.questions) return res.status(400).send("Récapitulatif invalide.");
+  if (!r || !Array.isArray(r.ranking) || !Array.isArray(r.questions) || !Array.isArray(r.names) || !r.stats) {
+    return res.status(400).send("Récapitulatif invalide.");
+  }
   r.date = new Date(r.date || Date.now());
   const jour = r.date.toISOString().slice(0, 10);
   res.setHeader("Content-Type", "application/pdf");
@@ -509,6 +511,7 @@ function revealAnswer(room) {
     text: q.text,
     options: q.options.slice(),
     correct: q.correct,
+    time: q.time || (QUIZ_DEFS[room.quizId].isBlind ? 30 : 40),
     distribution: distribution.slice(0, q.options.length),
     answers: Array.from(room.answers.entries()).map(([pid, a]) => ({
       playerId: pid,

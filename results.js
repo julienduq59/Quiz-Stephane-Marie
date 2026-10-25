@@ -2,10 +2,26 @@
  * Récapitulatif de fin de partie : classement, statistiques et export PDF.
  */
 const PDFDocument = require("pdfkit");
+const { analyze, fmt } = require("./public/js/analysis.js");
 
 /* ------------------------------------------------------------------ */
 /* Calcul du récapitulatif                                             */
 /* ------------------------------------------------------------------ */
+
+// Chronologie compacte de la partie, base de toutes les analyses :
+//   players[i]   = prénom du joueur i      teams[i] = son équipe (id) ou null
+//   questions[q] = [[i, choix, juste(1/0), tempsMs, points], …] dans l'ordre de jeu
+function buildTimeline(players, history) {
+  const idx = new Map();
+  players.forEach((p, i) => idx.set(p.id, i));
+  return {
+    players: players.map((p) => p.name),
+    teams: players.map((p) => p.teamId || null),
+    questions: history.map((h) => h.answers
+      .filter((a) => idx.has(a.playerId))
+      .map((a) => [idx.get(a.playerId), a.choice, a.correct ? 1 : 0, Math.round(a.timeMs), a.points])),
+  };
+}
 
 function buildResults(room, def, teamBoard) {
   const players = Array.from(room.players.values());
@@ -23,8 +39,11 @@ function buildResults(room, def, teamBoard) {
       n: i + 1,
       text: h.text,
       options: h.options,
+      correct: h.correct,
       correctLabel: h.options[h.correct],
       distribution: h.distribution,
+      time: h.time || null,
+      present: h.playersPresent || null,
       answered,
       good,
       rate: answered ? Math.round((good * 100) / answered) : 0,
@@ -63,7 +82,8 @@ function buildResults(room, def, teamBoard) {
     nbPlayers: players.length,
     nbQuestions: nbQ,
     ranking,
-    teams: (teamBoard || []).map((t) => ({ name: t.name, color: t.color, members: t.members, avg: t.avg, total: t.total })),
+    teams: (teamBoard || []).map((t) => ({ id: t.id, name: t.name, color: t.color, members: t.members, avg: t.avg, total: t.total })),
+    timeline: buildTimeline(players, history),
     questions,
     playerStats: playerStats.sort((a, b) => b.score - a.score),
     stats: {
@@ -115,6 +135,9 @@ function fmtDate(d) {
 function writePdf(raw, stream) {
   const r = pdfSafe(raw);
   r.date = raw.date instanceof Date ? raw.date : new Date(raw.date || Date.now());
+  let a = null; // trophées, film de la partie, faits sur les questions
+  try { a = analyze(r); } catch (e) { a = null; }
+  const nf = fmt.nf;
   const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: "Résultats — " + r.names.join(" & ") } });
   doc.pipe(stream);
   const W = doc.page.width - 96; // largeur utile
@@ -133,7 +156,7 @@ function writePdf(raw, stream) {
     [String(r.nbPlayers), "joueurs"],
     [String(r.nbQuestions), "questions"],
     [r.stats.globalRate + " %", "de bonnes réponses"],
-    [String(r.stats.avgScore), "score moyen"],
+    [nf(r.stats.avgScore), "score moyen"],
   ];
   const bw = W / kpis.length;
   const top = doc.y;
@@ -155,7 +178,7 @@ function writePdf(raw, stream) {
     doc.roundedRect(48, y, W, 30, 6).fillAndStroke(i === 0 ? "#fdf6e0" : "#f7f7f9", "#e6e6ee");
     doc.fillColor(medalColors[i]).font("Helvetica-Bold").fontSize(13).text(medals[i], 60, y + 9, { width: 40 });
     doc.fillColor("#000000").fontSize(13).text(p.name, 104, y + 9, { width: W - 190 });
-    doc.fillColor(medalColors[i]).text(p.score + " pts", 48, y + 9, { width: W - 14, align: "right" });
+    doc.fillColor(medalColors[i]).text(nf(p.score) + " pts", 48, y + 9, { width: W - 14, align: "right" });
     doc.y = y + 36;
   });
   doc.moveDown(0.4);
@@ -171,8 +194,8 @@ function writePdf(raw, stream) {
       doc.fillColor("#000000").font("Helvetica-Bold").fontSize(11)
          .text((i + 1) + ". " + tm.name, 62, y + 6, { width: W - 220 });
       doc.fillColor(GRIS).font("Helvetica").fontSize(9)
-         .text(tm.members + " joueur" + (tm.members > 1 ? "s" : "") + "  •  total " + tm.total + " pts", 48, y + 7, { width: W - 110, align: "right" });
-      doc.fillColor(PRUNE).font("Helvetica-Bold").fontSize(11).text(tm.avg + " moy.", 48, y + 6, { width: W - 12, align: "right" });
+         .text(tm.members + " joueur" + (tm.members > 1 ? "s" : "") + "  •  total " + nf(tm.total) + " pts", 48, y + 7, { width: W - 110, align: "right" });
+      doc.fillColor(PRUNE).font("Helvetica-Bold").fontSize(11).text(nf(tm.avg) + " moy.", 48, y + 6, { width: W - 12, align: "right" });
       doc.y = y + 27;
     });
     doc.fillColor(GRIS).font("Helvetica").fontSize(8).text("Classement à la moyenne de points par joueur.", 56, doc.y);
@@ -180,16 +203,50 @@ function writePdf(raw, stream) {
     doc.fillColor("#000000");
   }
 
-  // ---- Faits marquants ----
-  const st = r.stats;
-  const faits = [];
-  if (st.fastestAnswer) faits.push(["Réponse la plus rapide", st.fastestAnswer.name + " en " + st.fastestAnswer.sec + " s"]);
-  if (st.speedster) faits.push(["Gâchette la plus rapide", st.speedster.name + " (" + st.speedster.sec + " s en moyenne)"]);
-  if (st.easiest) faits.push(["Question la plus facile", "n°" + st.easiest.n + " — " + st.easiest.rate + " % de bonnes réponses"]);
-  if (st.hardest && (!st.easiest || st.hardest.n !== st.easiest.n)) {
-    faits.push(["Question la plus piégeuse", "n°" + st.hardest.n + " — " + st.hardest.rate + " % de bonnes réponses"]);
+  // ---- Trophées ----
+  if (a && a.awards.length) {
+    section(doc, "Trophées");
+    a.awards.forEach((x) => {
+      needSpace(doc, 20);
+      const y = doc.y;
+      doc.fillColor(ROSE).font("Helvetica-Bold").fontSize(9.5).text(pdfSafe(x.title), 56, y, { width: 165 });
+      doc.fillColor("#000000").text(pdfSafe(x.name), 230, y, { width: W - 190, continued: true })
+         .fillColor(GRIS).font("Helvetica").text("  —  " + pdfSafe(x.detail));
+      doc.moveDown(0.35);
+    });
+    doc.moveDown(0.4);
   }
-  if (st.perfect.length) faits.push(["Sans-faute", st.perfect.join(", ")]);
+
+  // ---- Le film de la partie ----
+  if (a && a.story.length) {
+    section(doc, "Le film de la partie");
+    a.story.forEach((x) => {
+      needSpace(doc, 20);
+      const y = doc.y;
+      doc.rect(57, y + 3.5, 4, 4).fill(OR);
+      doc.fillColor("#000000").font("Helvetica").fontSize(9.5).text(pdfSafe(x.text), 68, y, { width: W - 28 });
+      doc.moveDown(0.35);
+    });
+    doc.moveDown(0.4);
+  }
+
+  // ---- Faits marquants ----
+  const st = r.stats || {};
+  const faits = [];
+  const sec = (v) => String(v).replace(".", ",");
+  if (st.fastestAnswer) faits.push(["Réponse la plus rapide", st.fastestAnswer.name + " en " + sec(st.fastestAnswer.sec) + " s"]);
+  if (st.speedster && !(a && a.awards.some((x) => x.title === "Gâchette"))) {
+    faits.push(["Gâchette la plus rapide", st.speedster.name + " (" + sec(st.speedster.sec) + " s en moyenne)"]);
+  }
+  if (a && a.questionFacts.length) {
+    a.questionFacts.forEach((f) => faits.push([f.title, "Q" + f.q.n + " — " + pdfSafe(f.detail)]));
+  } else {
+    if (st.easiest) faits.push(["Question la plus facile", "n°" + st.easiest.n + " — " + st.easiest.rate + " % de bonnes réponses"]);
+    if (st.hardest && (!st.easiest || st.hardest.n !== st.easiest.n)) {
+      faits.push(["Question la plus piégeuse", "n°" + st.hardest.n + " — " + st.hardest.rate + " % de bonnes réponses"]);
+    }
+  }
+  if (st.perfect && st.perfect.length) faits.push(["Sans-faute", st.perfect.join(", ")]);
   if (r.durationMin) faits.push(["Durée de la partie", "environ " + r.durationMin + " min"]);
   if (faits.length) {
     section(doc, "Faits marquants");
@@ -205,13 +262,18 @@ function writePdf(raw, stream) {
 
   // ---- Classement complet ----
   section(doc, "Classement complet");
-  r.ranking.forEach((p, i) => {
+  const rows = a && a.players.length
+    ? a.players.map((p) => ({ rank: p.finalRank, name: p.name, score: p.score,
+        detail: p.good + "/" + p.answered + " bonnes réponses" + (p.answered ? "  ·  " + fmt.pct(p.accuracy) + " %" : "") }))
+    : r.ranking.map((p, i) => ({ rank: i + 1, name: p.name, score: p.score, detail: "" }));
+  rows.forEach((p, i) => {
     needSpace(doc, 18);
     const y = doc.y;
     if (i % 2 === 0) doc.rect(48, y - 2, W, 17).fill("#faf8fd");
-    doc.fillColor(GRIS).font("Helvetica").fontSize(9.5).text(String(i + 1) + ".", 56, y, { width: 24 });
-    doc.fillColor("#000000").text(p.name, 82, y, { width: W - 160 });
-    doc.fillColor(PRUNE).font("Helvetica-Bold").text(p.score + " pts", 48, y, { width: W - 14, align: "right" });
+    doc.fillColor(GRIS).font("Helvetica").fontSize(9.5).text(String(p.rank) + ".", 56, y, { width: 24 });
+    doc.fillColor("#000000").text(p.name, 82, y, { width: W - 270, lineBreak: false });
+    if (p.detail) doc.fillColor(GRIS).fontSize(8.5).text(p.detail, 48, y + 1, { width: W - 90, align: "right" });
+    doc.fillColor(PRUNE).font("Helvetica-Bold").fontSize(9.5).text(nf(p.score) + " pts", 48, y, { width: W - 14, align: "right" });
     doc.y = y + 15;
   });
   doc.moveDown(0.6);
@@ -224,8 +286,11 @@ function writePdf(raw, stream) {
     doc.fillColor(PRUNE).font("Helvetica-Bold").fontSize(10).text("Q" + q.n + ". " + q.text, 56, y, { width: W - 16 });
     doc.fillColor("#1b7a1b").font("Helvetica").fontSize(9)
        .text("Bonne réponse : " + q.correctLabel, 56, doc.y + 2, { width: W - 16 });
+    const pq = a && a.perQuestion[q.n - 1];
     const det = q.good + "/" + q.answered + " bonnes réponses (" + q.rate + " %)" +
-      (q.fastest ? "  •  plus rapide : " + q.fastest.name + " (" + q.fastest.sec + " s)" : "");
+      (q.fastest ? "  •  plus rapide : " + q.fastest.name + " (" + sec(q.fastest.sec) + " s)" : "") +
+      (pq && pq.avgTime != null ? "  •  temps moyen : " + fmt.sec(pq.avgTime) + " s" : "") +
+      (pq && pq.trap && pq.trap.pct >= 25 ? "  •  piège : " + pdfSafe(pq.trap.label) + " (" + pq.trap.pct + " %)" : "");
     doc.fillColor(GRIS).fontSize(8.5).text(det, 56, doc.y + 1, { width: W - 16 });
     // barre de réussite
     const by = doc.y + 4;
