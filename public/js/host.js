@@ -443,7 +443,7 @@
     show("podium");
     const rb = $("btn-results");
     if (rb) rb.href = "/api/results.pdf?quiz=" + encodeURIComponent(quizId);
-    histRecord(); // sauvegarde automatique de la partie terminée
+    showPodiumAwards();
     renderPodium(d.podium);
     renderLeaderboard($("full-leaderboard"), d.leaderboard);
     renderTeamBoard("p-teams-card", "p-teams", d.teams);
@@ -460,92 +460,24 @@
   });
 
 
-  /* ---------- Historique des parties (sauvegarde locale) ---------- */
-  const HIST_KEY = "quiz_history";
-  function histLoad() {
-    try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch (e) { return []; }
-  }
-  function histSave(list) {
-    try { localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) {}
-  }
-  // Enregistre le récap de la partie qui vient de se terminer
-  function histRecord() {
-    fetch("/api/results?quiz=" + encodeURIComponent(quizId))
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (!res || !res.ranking) return;
-        const list = histLoad();
-        const stamp = new Date(res.date || Date.now()).getTime();
-        // évite les doublons si le podium est réaffiché
-        if (list.some((g) => g.stamp === stamp && g.quizId === res.quizId)) return;
-        list.unshift({ stamp, quizId: res.quizId, names: res.names, nbPlayers: res.nbPlayers,
-                       nbQuestions: res.nbQuestions, top: res.ranking.slice(0, 3), full: res });
-        histSave(list);
-      })
-      .catch(() => {});
-  }
-  function histRender() {
-    const el = $("history-list");
-    const list = histLoad();
-    el.innerHTML = "";
-    if (!list.length) {
-      el.innerHTML = '<div class="muted center" style="padding:20px;">Aucune partie enregistrée pour le moment.</div>';
-      return;
-    }
-    list.forEach((g, i) => {
-      const d = new Date(g.stamp);
-      const row = document.createElement("div");
-      row.className = "pill";
-      row.style.cssText = "width:100%; justify-content:space-between; gap:12px; flex-wrap:wrap;";
-      const quand = d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) +
-        " à " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      const gagnant = g.top && g.top[0] ? esc(g.top[0].name) + " (" + (Number(g.top[0].score) || 0) + " pts)" : "—";
-      row.innerHTML =
-        '<div style="text-align:left;"><div class="display" style="font-size:0.95rem;">' + quand + '</div>' +
-        '<div class="muted" style="font-size:0.82rem;">' + (g.names || []).map(esc).join(" & ") + " · " +
-        (Number(g.nbPlayers) || 0) + " joueurs · " + (Number(g.nbQuestions) || 0) + " questions · 🥇 " + gagnant + '</div></div>';
-      const btns = document.createElement("div");
-      btns.style.cssText = "display:flex; gap:8px;";
-      const dl = document.createElement("button");
-      dl.className = "btn"; dl.style.cssText = "padding:8px 14px; font-size:0.82rem;";
-      dl.textContent = "📄 PDF";
-      dl.addEventListener("click", () => histDownload(g));
-      const del = document.createElement("button");
-      del.className = "btn secondary"; del.style.cssText = "padding:8px 12px; font-size:0.82rem;";
-      del.textContent = "🗑";
-      del.title = "Supprimer cette partie";
-      del.addEventListener("click", () => {
-        if (!confirm("Supprimer définitivement cette partie de l'historique ?")) return;
-        const l = histLoad(); l.splice(i, 1); histSave(l); histRender();
-      });
-      btns.appendChild(dl); btns.appendChild(del);
-      row.appendChild(btns);
-      el.appendChild(row);
+  /* ---------- Mémoire des quiz (parties gardées sur cet ordinateur + analyse) ---------- */
+  const memory = QuizMemory({ quizId });
+  let lastGame = null; // partie qui vient de se terminer, déjà en mémoire
+  // Au podium : sauvegarde automatique, puis trophées affichés sous le podium
+  function showPodiumAwards() {
+    lastGame = null;
+    $("p-awards-card").classList.add("hidden");
+    memory.record().then((g) => {
+      lastGame = g;
+      const list = g ? QuizAnalysis.analyze(g.full).awards : [];
+      if (!list.length) return;
+      memory.awards($("p-awards"), list);
+      $("p-awards-card").classList.remove("hidden");
     });
   }
-  // Refabrique le PDF à partir du récap stocké localement
-  function histDownload(g) {
-    fetch("/api/results.pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(g.full),
-    })
-      .then((r) => (r.ok ? r.blob() : Promise.reject()))
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "resultats-quiz-" + (g.quizId || "quiz") + "-" +
-          new Date(g.stamp).toISOString().slice(0, 10) + ".pdf";
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-      })
-      .catch(() => alert("Impossible de générer le PDF."));
-  }
-  $("btn-history").addEventListener("click", () => { histRender(); $("history-modal").classList.remove("hidden"); });
-  $("btn-history-close").addEventListener("click", () => $("history-modal").classList.add("hidden"));
-  $("history-modal").addEventListener("click", (e) => {
-    if (e.target === $("history-modal")) $("history-modal").classList.add("hidden");
+  $("btn-memory").addEventListener("click", () => memory.open());
+  $("btn-analysis").addEventListener("click", () => {
+    (lastGame ? Promise.resolve(lastGame) : memory.record()).then((g) => memory.open(g ? g.stamp : null));
   });
 
 
